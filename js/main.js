@@ -2,11 +2,16 @@ $(document).ready(function() {
 
     var columns = ["accession", "location", "organism", "nat_host", "isolation_source", "plasmid_name", "strain", "country", "collection_date", "sequence"]
     var freezedColumns = []
-    var isolate_tablular_data = Object.keys(alignments_data["isolate_info"]).map(function(k) {
-        return alignments_data["isolate_info"][k];
+    var isolate_tablular_data = Object.keys(alignments_data).map(function(k) {
+        table_row = {}
+        $.each(columns, function(idx, col) {
+            table_row[col] = alignments_data[k][col]
+        });
+        table_row['id'] = k;
+        return table_row;
     });
 
-    console.log(isolate_tablular_data);
+
 
     tabulate(isolate_tablular_data, columns)
     drawSequences();
@@ -87,7 +92,8 @@ $(document).ready(function() {
 
         $(".seqviewer").map(function() {
             var alignID = $(this).attr('id');
-            var data = alignments_data['alignments'][alignID]['aligned_regs']
+            var data = alignments_data[alignID]['ranges']
+                // console.log(alignID, data);
             alignmentBox(alignID, data);
         });
     }
@@ -99,8 +105,8 @@ $(document).ready(function() {
         var width = 2000,
             height = 50;
 
-
-        var x = d3.scaleLinear().domain([1, alignments_data["length"]]).range([0, width]),
+        var alignmentLength = 21e3;
+        var x = d3.scaleLinear().domain([1, alignmentLength]).range([0, width]),
             y = d3.scaleLinear().range([height, 0]);
 
 
@@ -118,16 +124,33 @@ $(document).ready(function() {
         var focus = svg.append("g")
             .attr("class", "focus")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
+        // console.log(data);
         focus.selectAll('.alignbox')
             .data(data)
             .enter()
             .append("rect")
             .attr('class', 'alignbox')
-            .attr('x', function(d) { return x(d.sidx); })
+            .attr('x', function(d) { return x(d.qry_index[0]); })
             .attr('y', 0)
-            .attr('width', function(d) { return x(Math.abs(d.sidx - d.eidx)); })
+            .attr('width', function(d) { return x(Math.abs(d.qry_index[0] - d.qry_index[1])); })
             .attr('height', 15);
+
+        var seq_comp = []
+        $.each(data, function(k, arr) {
+            seq_comp = seq_comp.concat(arr['line_annot']);
+        });
+
+        // console.log(seq_comp);
+        focus.selectAll('.alig-guid')
+            .data(seq_comp)
+            .enter()
+            .append('line')
+            .attr('class', function(d) { return 'alig-guid ' + d.t; })
+            .attr('x1', function(d) { return x(d.v) })
+            .attr('y1', 0)
+            .attr('x2', function(d) { return x(d.v) })
+            .attr('y2', 15)
+            .style("stroke-width", 1);
 
         focus.append("g")
             .attr("class", "axis x-axis")

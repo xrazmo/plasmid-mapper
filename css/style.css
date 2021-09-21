@@ -15,6 +15,18 @@ table {
     white-space: nowrap;
 }
 
+.m {
+    stroke: gold;
+}
+
+.w {
+    stroke: forestgreen;
+}
+
+.q {
+    stroke: crimson;
+}
+
 
 /* th:first-child,
 td:first-child {
