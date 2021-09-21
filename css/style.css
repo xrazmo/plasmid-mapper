@@ -1,0 +1,23 @@
+.table td {
+    vertical-align: middle!important;
+}
+
+.table {
+    fill: #c1caca;
+}
+
+.tick line {
+    color: #c1caca;
+    stroke-dasharray: 2px;
+}
+
+table {
+    white-space: nowrap;
+}
+
+
+/* th:first-child,
+td:first-child {
+    position: sticky;
+    left: 0px;
+} */
