@@ -15,11 +15,16 @@ table {
     white-space: nowrap;
 }
 
+.refcontext .x-axis {
+    fill: #ffffe5;
+}
+
 .alignbox:hover {
-    fill: #979c9c9b;
+    fill: #6baed6;
     ;
-    stroke: #979c9c9b;
+    stroke: #6baed6;
     stroke-width: 1px;
+    cursor: pointer;
 }
 
 .m {
@@ -27,11 +32,11 @@ table {
 }
 
 .s {
-    stroke: #4575b4;
+    stroke: #16d3c3;
 }
 
 .q {
-    stroke: #7fbc41;
+    stroke: #542788;
 }
 
 .other {
@@ -100,6 +105,7 @@ table {
     fill: #fff;
     font-size: 10px;
     mix-blend-mode: difference;
+    font-weight: bolder;
 }
 
 .tick>line {

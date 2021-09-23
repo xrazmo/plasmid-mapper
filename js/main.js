@@ -1,6 +1,6 @@
 $(document).ready(function() {
 
-    var columns = ["accession", "location", "organism", "nat_host", "isolation_source", "plasmid_name", "strain", "country", "collection_date", "sequence"]
+    var columns = ["accession", "definition", "organism", "host", "isolation_source", "plasmid", "strain", "country", "collection_date", "sequence"]
     var freezedColumns = []
 
     tabulate(columns)
@@ -16,6 +16,9 @@ $(document).ready(function() {
             row['id'] = k;
             if (k.startsWith('aln')) {
                 data.push(row)
+            }
+            if (k.startsWith('ref')) {
+                data = [row].concat(data);
             }
 
         });
@@ -104,10 +107,12 @@ $(document).ready(function() {
 
     function alignmentBox(alignID, data, accession) {
 
+        isRef = alignID == 'ref' ? true : false;
+
         var margin = { top: 10, right: 10, bottom: 1, left: 10 };
 
         var width = 4000,
-            height = 50;
+            height = 60;
 
         var alignmentLength = 21580;
         var x = d3.scaleLinear().domain([1, alignmentLength]).range([0, width]),
@@ -126,40 +131,9 @@ $(document).ready(function() {
             .attr('version', "1.1");
 
         var focus = svg.append("g")
-            .attr("class", "focus")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-        focus.selectAll('.alignbox')
-            .data(data)
-            .enter()
-            .append("rect")
-            .attr('class', 'alignbox')
-            .attr('accession', accession)
-            .attr('sbjindex', function(d) { return d.sbj_index[0] + '-' + d.sbj_index[1]; })
-            .attr('x', function(d) { return x(d.qry_index[0]); })
-            .attr('y', 0)
-            .attr('width', function(d) { return x(Math.abs(d.qry_index[0] - d.qry_index[1])); })
-            .attr('height', 15)
-            .on('click', function(e) {
-                var acc = $(this).attr('accession');
-                var indexes = $(this).attr('sbjindex');
-                var pp = indexes.split('-');
-                pp = pp.map(x => parseInt(x))
-
-                var ncbiGraphicStr = "https://www.ncbi.nlm.nih.gov/nuccore/" + acc +
-                    "?report=graph&amp;from=" + (pp[0] - 1000) +
-                    "&amp;to=" + (pp[1] + 1000) + "&amp;mk=" + pp[0] + ":" + pp[1] +
-                    "|Aligned region|008000&amp";
-
-                var win = window.open(ncbiGraphicStr, '_blank');
-                if (win) {
-                    //Browser has allowed it to be opened
-                    win.focus();
-                } else {
-                    //Browser has blocked it
-                    alert('Please allow popups for this website');
-                }
-            });
+            .attr("class", isRef ? "focus refcontext" : "focus")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .style('fill', "#c6dbef");
 
         var seq_comp = [],
             orflist = [];
@@ -168,18 +142,54 @@ $(document).ready(function() {
             orflist = orflist.concat(arr['orfs']);
         });
 
+        if (!isRef) {
+            focus.selectAll('.alignbox')
+                .data(data)
+                .enter()
+                .append("rect")
+                .attr('class', 'alignbox')
+                .attr('accession', accession)
+                .attr('sbjindex', function(d) { return d.sbj_index[0] + '-' + d.sbj_index[1]; })
+                .attr('x', function(d) { return x(d.qry_index[0]); })
+                .attr('y', 5)
+                .attr('width', function(d) { return x(Math.abs(d.qry_index[0] - d.qry_index[1])); })
+                .attr('height', 15)
+                .on('click', function(e) {
+                    var acc = $(this).attr('accession');
+                    var indexes = $(this).attr('sbjindex');
+                    var pp = indexes.split('-');
+                    pp = pp.map(x => parseInt(x))
 
-        // console.log(seq_comp);
-        focus.selectAll('.alig-guid')
-            .data(seq_comp)
-            .enter()
-            .append('line')
-            .attr('class', function(d) { return 'alig-guid ' + d.t; })
-            .attr('x1', function(d) { return x(d.v) })
-            .attr('y1', 0)
-            .attr('x2', function(d) { return x(d.v) })
-            .attr('y2', 15)
-            .style("stroke-width", 1);
+                    var ncbiGraphicStr = "https://www.ncbi.nlm.nih.gov/nuccore/" + acc +
+                        "?report=graph&amp;from=" + (pp[0] - 1000) +
+                        "&amp;to=" + (pp[1] + 1000) + "&amp;mk=" + pp[0] + ":" + pp[1] +
+                        "|Aligned region|008000&amp";
+
+                    var win = window.open(ncbiGraphicStr, '_blank');
+                    if (win) {
+                        //Browser has allowed it to be opened
+                        win.focus();
+                    } else {
+                        //Browser has blocked it
+                        alert('Please allow popups for this website');
+                    }
+                });
+
+
+
+
+            // console.log(seq_comp);
+            focus.selectAll('.alig-guid')
+                .data(seq_comp)
+                .enter()
+                .append('line')
+                .attr('class', function(d) { return 'alig-guid ' + d.t; })
+                .attr('x1', function(d) { return x(d.v) })
+                .attr('y1', 5)
+                .attr('x2', function(d) { return x(d.v) })
+                .attr('y2', 20)
+                .style("stroke-width", 1);
+        }
 
         focus.append("g")
             .attr("class", "axis x-axis")
@@ -234,19 +244,19 @@ $(document).ready(function() {
             .attr("d", function(d) {
                 return getPath({
                     x: x(d.sidx),
-                    y: y(2)
+                    y: y(isRef ? 2 : 1.7)
                 }, {
                     x: x(d.eidx),
-                    y: y(2)
+                    y: y(isRef ? 2 : 1.7)
                 }, height / 3, height / 3, height / 3);
             })
             .attr("transform", function(d) {
                 return getTransform({
                     x: x(d.sidx),
-                    y: y(2)
+                    y: y(isRef ? 2 : 1.7)
                 }, {
                     x: x(d.eidx),
-                    y: y(2)
+                    y: y(isRef ? 2 : 1.7)
                 });
             }).on('mouseover', function(e) {
                 // var newpopover = Mustache.render(BLASTX_POPOVER_TEMPLATE, d);
@@ -291,7 +301,7 @@ $(document).ready(function() {
             .attr('class', 'orfLbl')
             .attr("transform", function(d) {
 
-                return getTextTransform(d, 1.85, d.dscr.length, xVisibleMax);
+                return getTextTransform(d, isRef ? 1.9 : 1.6, d.dscr.length, xVisibleMax);
             })
             .attr('display', d => textFits(d, xVisibleMax) ? null : 'none').text(d => trimText(d, xVisibleMax));
 
