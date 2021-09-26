@@ -1,20 +1,77 @@
 $(document).ready(function() {
 
-    var columns = ["accession", "definition", "organism", "host", "isolation_source", "plasmid", "strain", "country", "collection_date", "sequence"]
+    tag = document.getElementsByTagName('title')
+    var columns;
     var freezedColumns = []
+    var CONTEXT_DATA;
+    var IS_MAINPAGE;
+    var ALIGNMENT_LENGTH;
+
+    $("#spinner").addClass('busy');
+
+    $('[data-toggle="popover"]').popover();
+    plotColorguid();
+
+    var sample_name = {};
+
+    $.searchParams = function(name) {
+        var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+        if (!results) {
+            return null;
+        } else {
+            return decodeURI(results[1]) || 0;
+        }
+    };
+
+    catchParam();
+
+    function catchParam() {
+        var paramName = ["id"];
+        paramName.forEach(function(param) {
+            value = $.searchParams(param);
+            if (value) {
+                sample_name[param] = value;
+            }
+
+        });
+
+    }
+
+    if ($(tag).attr('id') != 'main-page') {
+        columns = ["#", "accession", "definition", "BioSample", "host", "isolation_source", "plasmid", "strain", "country", "collection_date", "sequence"]
+        CONTEXT_DATA = alignments_data[sample_name['id']];
+        if (typeof CONTEXT_DATA == 'undefined') {
+            $("#main-section").html("<p class='h3 text-center text-danger'>No alignment to show!</p>")
+        }
+        IS_MAINPAGE = false;
+        ALIGNMENT_LENGTH = CONTEXT_DATA['qlen']
+
+        $(tag).text("Alignment viewer")
+        $("#header").html('Contig: <mark>' + sample_name['id'] + '</mark>')
+
+    } else {
+        columns = ["#", "alignments", "accession", "organism", "comments", 'sequence']
+        CONTEXT_DATA = reference_contexts;
+        ALIGNMENT_LENGTH = 22000
+        IS_MAINPAGE = true;
+    }
 
     tabulate(columns)
     drawSequences();
+    $("#spinner").addClass('busy');
 
     function tabulate(columns) {
-        var data = []
-        $.each(alignments_data, function(k, cnt) {
+        var data = [];
+
+        $.each(CONTEXT_DATA, function(k, cnt) {
             var row = {}
+
             $.each(columns, function(idx, col) {
-                row[col] = alignments_data[k][col]
+                row[col] = CONTEXT_DATA[k][col];
+
             });
             row['id'] = k;
-            if (k.startsWith('aln')) {
+            if ((k.startsWith('aln') || IS_MAINPAGE) && !k.startsWith('orf')) {
                 data.push(row)
             }
             if (k.startsWith('ref')) {
@@ -70,17 +127,22 @@ $(document).ready(function() {
             });
 
         // create a row for each object in the data
+
         var rows = tbody.selectAll('tr')
             .data(data)
             .enter()
             .append('tr');
 
         // create a cell in each row for each column
+        var rownr = 0
         rows.selectAll('td')
             .data(function(row) {
                 return columns.map(function(column) {
                     if (column == "sequence") {
                         return { column: "sequence", id: row['id'] }
+                    }
+                    if (column == "alignments") {
+                        return { column: "alignments", acc: row['accession'] }
                     }
                     return { column: column, value: row[column] };
                 });
@@ -89,8 +151,14 @@ $(document).ready(function() {
             .append('td')
             .attr('class', function(d) { return d.column == 'sequence' ? 'seqviewer' : undefined; })
             .attr('id', function(d) { return d.column == 'sequence' ? d.id : undefined; })
-            .text(function(d) { return d.column != 'sequence' ? d.value : undefined; });
-
+            .html(function(d) {
+                var colW = 21;
+                if (d.column == '#') {
+                    rownr = rownr + 1
+                    return rownr;
+                } else if (d.column == 'accession') { return rownr > 1 && !IS_MAINPAGE ? "<a href='https://www.ncbi.nlm.nih.gov/nuccore/" + d.value + "' target='_blank'>" + d.value + "</a>" : d.value; } else if (d.column == 'BioSample') { return d.value ? "<a href='https://www.ncbi.nlm.nih.gov/biosample/" + d.value + "' target='_blank'>" + d.value + "</a>" : ''; } else if (d.column == 'alignments') { return '<a class="btn btn-link" href="./html/aln.html?id=' + d.acc + '" target="_blank"><i class="fa fa-external-link"></i></a>' } else if (d.column == 'sequence') { return undefined; } else if (d.column == 'definition' || d.column == 'comments') { colW = 50; }
+                return chunkSubstr(d.value, colW);
+            });
 
 
     }
@@ -99,23 +167,24 @@ $(document).ready(function() {
 
         $(".seqviewer").map(function() {
             var alignID = $(this).attr('id');
-            var data = alignments_data[alignID]['ranges']
+            var data = CONTEXT_DATA[alignID]['ranges']
                 // console.log(alignID, data);
-            alignmentBox(alignID, data, alignments_data[alignID]['accession']);
+            var isRef = (alignID == 'ref' ? true : false) || IS_MAINPAGE;
+            alignmentBox(alignID, data,
+                CONTEXT_DATA[alignID]['accession'], isRef);
         });
     }
 
-    function alignmentBox(alignID, data, accession) {
+    function alignmentBox(alignID, data, accession, isRef) {
 
-        isRef = alignID == 'ref' ? true : false;
 
-        var margin = { top: 10, right: 10, bottom: 1, left: 10 };
+        var margin = { top: 6, right: 10, bottom: 1, left: 10 };
 
-        var width = 4000,
+        var width = 2000,
             height = 60;
 
-        var alignmentLength = 21580;
-        var x = d3.scaleLinear().domain([1, alignmentLength]).range([0, width]),
+
+        var x = d3.scaleLinear().domain([1, ALIGNMENT_LENGTH]).range([0, width]),
             y = d3.scaleLinear().domain([1, 3]).range([height, 0]);
 
 
@@ -209,7 +278,7 @@ $(document).ready(function() {
         var xMax = 0;
 
         $.each(orflist, function(i, orf_dic) {
-            var orfInfo = alignments_data['orf_collection'][orf_dic['id']]
+            var orfInfo = CONTEXT_DATA['orf_collection'][orf_dic['id']]
             if (typeof orfInfo == "undefined" || !orfInfo) {
 
                 orfInfo = {
@@ -261,7 +330,7 @@ $(document).ready(function() {
             }).on('mouseover', function(e) {
                 // var newpopover = Mustache.render(BLASTX_POPOVER_TEMPLATE, d);
                 orfId = $(this).attr('id')
-                var d = alignments_data['orf_collection'][orfId]
+                var d = CONTEXT_DATA['orf_collection'][orfId]
                 if (!d) {
                     d = {
                         "idty": 'N/A',
@@ -384,6 +453,53 @@ $(document).ready(function() {
         return "translate(" + from.x + "," + from.y + ") " + scaleTxt;
     }
 
+    function plotColorguid() {
+        var svg = d3.select("#colorguid").attr('viewBox', [0, 0, 100, 90]).attr("preserveAspectRatio", "xMidYMid meet");
+        var orfWidth = 90,
+            orfheight = 8;
+        var margin = 5;
+        var orfDic = {
+            "args": "Antibiotic resistance genes",
+            "biocidemetal": "Biocide and metal resistance genes",
+            "isel": "Insertion sequences",
+            "transposase": "Other transposases",
+            "integrase": "Integrase genes",
+            "virulence": "Virulance factors",
+            "other": 'Other genes',
+            "unknown": "ORFs without annotation"
 
+        }
+        var row = 5;
+        $.each(orfDic, function(klass, label) {
+            var g = svg.append('g').attr("transform", "translate(5," + row + ")");
+            g.append("path")
+                .attr('class', klass)
+                .attr("d", getPath({ x: margin, y: 1 }, { x: orfWidth + margin, y: 1 }, orfheight, orfheight, orfheight));
+
+            g.append("text")
+                .attr('class', 'orfLbl')
+                .attr("transform", "translate(" + (45 - (label.length)) + ",2)")
+                .text(label).style('font-size', '4px');
+
+            row += orfheight + 2;
+        });
+
+    }
+
+    function chunkSubstr(in_str, size) {
+        if (typeof in_str == 'undefined') {
+            return in_str
+        }
+        const numChunks = Math.ceil(in_str.length / size)
+            //   const chunks = new Array(numChunks)
+        var new_str = "";
+        for (let i = 0, o = 0; i < numChunks; ++i, o += size) {
+            // chunks[i] = str.substr(o, size)
+            new_str = new_str + "<br>" + in_str.substr(o, size)
+
+        }
+
+        return new_str;
+    }
 
 });

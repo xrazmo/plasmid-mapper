@@ -5,35 +5,68 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alignment Viewer</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <title id="None">Alignment Viewer</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
 
 </head>
 
 <body>
     <main role="main" class="container-fluid">
 
-        <section>
-            <p class="h1">Alignment Viewer</p>
+        <section class="container mt-4">
+            <p class="h1 text-center text-dark">Alignment viewer</p>
+            <hr>
+            <p id='header' class="h3 text-center text-dark font-weight-light"></p>
+            <p class=" text-muted text-center mb-0">See the colors guide <button class="btn btn-link p-0 mb-1" style="color:#0a98c0;" data-toggle="modal" data-target="#colorsModal">here</button>.
+
         </section>
-        <section id="main-section">
+        <section id="main-section" class="mt-5">
             <table id='tbl-main' class="table table-bordered table-sm"></table>
         </section>
 
-    </main>
 
+    </main>
+    <div class="modal fade" id="colorsModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalCenterTitle">Colors Guide</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-12">
+                                <svg id="colorguid">
+
+                  </svg>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!--/container-fluid-->
+                </div>
+                <!--/modal-body-->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 <script src="https://d3js.org/d3.v6.min.js"></script>
-<script src="js/mustache.js"></script>
-<script src="js/templates.js"></script>
-<script src="js/data.js"></script>
-<script src="js/main.js"></script>
+<script src="../js/mustache.js"></script>
+<script src="../js/templates.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/main.js"></script>
 
 
 </html>
