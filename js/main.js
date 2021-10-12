@@ -46,7 +46,7 @@ $(document).ready(function() {
         IS_MAINPAGE = false;
         ALIGNMENT_LENGTH = CONTEXT_DATA['qlen']
 
-        $(tag).text("Alignment viewer")
+        $(tag).text(sample_name['id'])
         $("#header").html('Contig: <mark>' + sample_name['id'] + '</mark>')
 
     } else {
@@ -160,7 +160,6 @@ $(document).ready(function() {
                 return chunkSubstr(d.value, colW);
             });
 
-
     }
 
     function drawSequences() {
@@ -243,8 +242,6 @@ $(document).ready(function() {
                         alert('Please allow popups for this website');
                     }
                 });
-
-
 
 
             // console.log(seq_comp);
