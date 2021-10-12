@@ -101,9 +101,9 @@ table {
 }
 
 .axis {
-    stroke-width: 0.5px;
+    stroke-width: 0.3px;
     stroke: #888;
-    font: 7px avenir next, sans-serif;
+    font: 3px avenir next, sans-serif;
 }
 
 .axis>path {
