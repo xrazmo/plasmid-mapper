@@ -28,13 +28,14 @@ table {
     fill: #ffffe5;
 }
 
-.alignbox:hover {
+
+/* .alignbox:hover {
     fill: #6baed6;
     ;
     stroke: #6baed6;
     stroke-width: 1px;
     cursor: pointer;
-}
+} */
 
 .m {
     stroke: #e34a33;
@@ -102,12 +103,18 @@ table {
 
 .axis {
     stroke-width: 0.3px;
-    stroke: #888;
-    font: 3px avenir next, sans-serif;
+    stroke: #000;
+    font: 4px avenir next, sans-serif;
 }
 
 .axis>path {
     stroke: #888;
+}
+
+.taxis {
+    stroke-width: 0.1px;
+    stroke: rgb(66, 66, 66);
+    font: 3px avenir next, sans-serif;
 }
 
 .orfLbl {
