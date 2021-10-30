@@ -160,70 +160,15 @@ $(document).ready(function() {
         var half_pi = Math.PI / 2,
             orfR = [radius - 8, radius - 3],
             orfLblR = radius - 20;
+        var secondRadius,
+            tcoord2Angle;
+        var sColor = '#dd3497';
+        var recR = [orfR[0] - 5, radius + 6];
+        secondRadius = recR[0] - 20;
 
-        $.each(data.orfs, function(i, d) {
-
-            qryfocus.append("path")
-                .attr('class', "orf " + d.type)
-                .attr("d", getArrowedArc(orfR[0], orfR[1], coord2Angle(d.sidx),
-                    coord2Angle(d.eidx), d.strand == 1))
-                .style('stroke', '#737373')
-                .style('stroke-width', 0.3);
-            var isAnn = false;
-            $.each(data.annotations, function(i, ann) {
-                if (d.eidx >= ann.sidx && d.sidx <= ann.eidx) {
-                    isAnn = true;
-                    return 1;
-                }
-            });
-
-            if (d.type == 'args' && !isAnn) {
-                textg.append('path')
-                    .attr('id', 'line-' + d.id)
-                    .attr("d", getORFLables(orfLblR, orfR[0], coord2Angle(d.sidx), coord2Angle(d.eidx)))
-                    .style('stroke', '#000')
-                    .style("stroke-dasharray", ("1,1"))
-                    .style('stroke-width', '0.6')
-                    .style('fill', 'none');
-
-
-                textg.append('text')
-                    .attr('x', orfLblR * Math.cos(coord2Angle(d.sidx) - half_pi))
-                    .attr('y', orfLblR * Math.sin(coord2Angle(d.sidx) - half_pi))
-                    .style("font-size", "0.25rem")
-                    .style('font-weight', 600).style('font-style', 'italic')
-                    .text(d.dscr)
-                    .on("mousedown", function(event) {
-                        event.preventDefault();
-
-                        this.style.cursor = "grabbing";
-                        touched = true;
-                    })
-                    .on('mouseleave mouseup', function(event) {
-                        touched = false; // signals mouse up for (D) and (E)
-                        this.style.cursor = "grab";
-                    })
-                    .on("mousemove", function(event) {
-
-                        if (!touched) return; // mousemove with the mouse up
-                        var t = d3.pointer(event);
-                        var line = qryfocus.select('#line-' + d.id);
-                        var sp = line.attr("d").split(" ")
-                        sp[sp.length - 1] = t[1] - 1
-                        sp[sp.length - 2] = t[0] + 1
-                        line.attr('d', sp.join(" "));
-                        $(this).attr('x', t[0] - 5)
-                            .attr('y', t[1] + 1)
-                    });
-
-            }
-
-        });
-
-        // Zoom annotations
         $.each(data.annotations, function(i, d) {
-            var recR = [orfR[0] - 5, radius + 6]
-            var sColor = '#dd3497'
+
+
             qryfocus.append("path")
                 .attr("d", d3.arc()
                     .innerRadius(recR[0])
@@ -241,7 +186,7 @@ $(document).ready(function() {
                 arcEidx = d.eidx + Math.min(2 * qryLen, qLen / 4);
 
             var ticks = d3.range(d.sidx, d.eidx, 1e3)
-            var tcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx), coord2Angle(arcEidx)]).domain([d.sidx, d.eidx]);
+            tcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx), coord2Angle(arcEidx)]).domain([d.sidx, d.eidx]);
             var tx = d3.scaleBand()
                 .range([coord2Angle(arcSidx), coord2Angle(arcEidx)])
                 .domain(d3.range(d.sidx, d.eidx));
@@ -262,24 +207,97 @@ $(document).ready(function() {
                 .attr("x2", -2).style('stroke', sColor);
 
             txAxis.append("path")
-                .attr("d", getUnaligned_deletion(recR[0], recR[0] - 20, coord2Angle(d.sidx + (qryLen / 2)), coord2Angle(arcSidx), coord2Angle(arcEidx)))
+                .attr("d", getUnaligned_deletion(recR[0], secondRadius, coord2Angle(d.sidx + (qryLen / 2)), coord2Angle(arcSidx), coord2Angle(arcEidx)))
                 .style('stroke', sColor)
                 .style("stroke-dasharray", ("1,1"))
                 .style('stroke-width', '0.5')
                 .attr('fill', 'None');
 
-            qryfocus.selectAll('.orf-s')
-                .data(data.orfs)
-                .enter()
-                .append('path').filter(orf => orf.eidx >= d.sidx && orf.sidx <= d.eidx)
-                .attr('class', orf => 'orf-s ' + orf.type)
-                .attr("d", orf => getArrowedArc(recR[0] - 28, recR[0] - 22, tcoord2Angle(orf.sidx),
-                    tcoord2Angle(orf.eidx), orf.strand == 1))
+        });
+
+        $.each(data.orfs, function(i, d) {
+
+            var isAnn = false;
+            $.each(data.annotations, function(i, ann) {
+                if (d.eidx >= ann.sidx && d.sidx <= ann.eidx) {
+                    isAnn = true;
+                    return 1;
+                }
+            });
+
+            qryfocus.append("path")
+                .attr('class', "orf " + d.type)
+                .attr("d", getArrowedArc(orfR[0], orfR[1], coord2Angle(d.sidx),
+                    coord2Angle(d.eidx), d.strand == 1))
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
 
+            // Also plot the ORF on the second/inner/zoomed axis    
+            if (isAnn) {
+                qryfocus.append("path")
+                    .attr('class', "orf " + d.type)
+                    .attr("d", getArrowedArc(secondRadius - 8, secondRadius - 2, tcoord2Angle(d.sidx),
+                        tcoord2Angle(d.eidx), d.strand == 1))
+                    .style('stroke', '#737373')
+                    .style('stroke-width', 0.3);
+            }
+            if (d.type == 'hypothetical') return;
+
+            if (isAnn) {
+                orfLblR = secondRadius - 18
+                textg.append('path')
+                    .attr('id', 'line-' + d.id)
+                    .attr("d", getORFLables(orfLblR, secondRadius - 8, tcoord2Angle(d.sidx), tcoord2Angle(d.eidx)))
+                    .style('stroke', '#000')
+                    .style("stroke-dasharray", ("1,1"))
+                    .style('stroke-width', '0.6')
+                    .style('fill', 'none');
+
+
+                textg.append('text')
+                    .attr('x', orfLblR * Math.cos(tcoord2Angle(d.sidx) - half_pi))
+                    .attr('y', orfLblR * Math.sin(tcoord2Angle(d.sidx) - half_pi))
+                    .style("font-size", "0.25rem")
+                    .style('font-weight', 600).style('font-style', 'italic')
+                    .text(d.dscr)
+                    .on("mousedown", function(event) {
+                        event.preventDefault();
+
+                        this.style.cursor = "grabbing";
+                        touched = true;
+                    })
+                    .on('mouseleave mouseup', function(event) {
+                        touched = false; // signals mouse up for (D) and (E)
+                        this.style.cursor = "grab";
+                    })
+                    .on("mousemove", function(event) {
+
+                        if (!touched) return; // mousemove with the mouse up
+                        var t = d3.pointer(event);
+                        var line = qryfocus.select('#line-' + d.id);
+                        var sp = line.attr("d").split(" ")
+                        sp[sp.length - 1] = t[1] + 1
+                        sp[sp.length - 2] = t[0] - 1
+                        line.attr('d', sp.join(" "));
+                        $(this).attr('x', t[0] - 5)
+                            .attr('y', t[1] + 1)
+                    });
+
+            }
+
         });
 
+        // Zoom annotations
+
+        // qryfocus.selectAll('.orf-s')
+        // .data(data.orfs)
+        // .enter()
+        // .append('path').filter(orf => orf.eidx >= d.sidx && orf.sidx <= d.eidx)
+        // .attr('class', orf => 'orf-s ' + orf.type)
+        // .attr("d", orf => getArrowedArc(recR[0] - 28, recR[0] - 22, tcoord2Angle(orf.sidx),
+        //     tcoord2Angle(orf.eidx), orf.strand == 1))
+        // .style('stroke', '#737373')
+        // .style('stroke-width', 0.3);
 
     }
 
