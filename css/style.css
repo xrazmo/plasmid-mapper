@@ -51,54 +51,38 @@ table {
 
 .other {
     fill: #99D8C9;
-    stroke-width: 0px;
-    stroke: #99D8C9;
 }
 
 .args {
     fill: #a50f15;
-    stroke-width: 0px;
-    stroke: #a50f15;
 }
 
 .hypothetical {
-    background-color: #FEE08B!important;
+    file: #FEE08B!important;
 }
 
 .transposase {
     fill: #225EA8;
-    stroke-width: 0px;
-    stroke: #225EA8;
 }
 
 .isel {
     fill: #1D91C0;
-    stroke-width: 0px;
-    stroke: #1D91C0;
 }
 
 .integrase {
     fill: #41AB5D;
-    stroke-width: 0px;
-    stroke: #41AB5D;
 }
 
 .virulence {
     fill: #BF812D;
-    stroke-width: 0px;
-    stroke: #BF812D;
 }
 
 .biocidemetal {
     fill: #FD8D3C;
-    stroke-width: 0;
-    stroke: #FD8D3C;
 }
 
 .unknown {
     fill: #969696;
-    stroke-width: 0px;
-    stroke: #969696;
 }
 
 .axis {

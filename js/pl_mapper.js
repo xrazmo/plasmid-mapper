@@ -2,15 +2,12 @@ $(document).ready(function() {
 
 
     var controls = initSVG();
-
+    var touched;
 
     function initSVG() {
-        var size = 500;
-        var radius = 120,
-            sRadius = radius - 10,
-            qRadius = radius + 50;
-        var slen = MAP_DATA.slen,
-            qlen = MAP_DATA.slen;
+        var size = 400;
+        var radius = 110,
+            radiusStep = 50;
 
 
         var svg = d3.select('#main-svg');
@@ -22,12 +19,11 @@ $(document).ready(function() {
             .attr('id', 'focus')
             .attr("transform", "translate(" + size / 2 + "," + size / 2 + ")");
 
+        var qryId = 'p004KP_6'
+        plotPlasmid(Contig_ref[qryId], radius);
 
-        plotPlasmid(qRadius, qlen, 'qry');
-        plotPlasmid(sRadius, slen, 'sbj');
+        return { 'radius': radius, 'radiusStep': radiusStep, "size": size }
 
-        return { 'sRadius': sRadius, 'qRadius': qRadius, "size": size }
-        // $.each(MAP_DATA["una_reg"], function(i, reg) {
         //     var unaligR1 = outterRadius + 13,
         //         unaligR2 = outterRadius + 14;
 
@@ -102,26 +98,26 @@ $(document).ready(function() {
 
         // focus.append("path")
         //     .attr("d", getORF(outterRadius - 5, outterRadius, coord2Angle(15232), coord2Angle(20545), -1)) // 2*Pi = 6.28 = top  d3.arc()
-        //     .attr('fill', '#f903a2');
-
 
     }
 
-    function plotPlasmid(radius, pLen, type) {
+    function plotPlasmid(data, radius) {
 
+        var qLen = data.qlen;
         var focus = d3.select('#focus');
-        var subFocus = focus.append('g').attr('class', type == 'sbj' ? 's-focus' : 'q-focus');
-        var stick_values = d3.range(0, pLen, 15e3)
-        var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, pLen]);
+        var qryfocus = focus.append('g').attr('class', 'qry-focus');
+        var stick_values = d3.range(0, qLen, 15e3)
+        var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, qLen]);
         var x = d3.scaleBand()
             .range([0, 2 * Math.PI])
-            .domain(d3.range(0, pLen));
+            .domain(d3.range(0, qLen));
 
         var y = d3.scaleRadial()
             .range([radius, radius + 2]) // Domain will be define later.
             .domain([0, 2]);
 
-        var xAxis = subFocus.append("g")
+
+        var xAxis = qryfocus.append("g")
             .selectAll(".axis")
             .data(stick_values)
             .enter()
@@ -141,41 +137,113 @@ $(document).ready(function() {
             });
 
 
-        subFocus.append("path")
+        qryfocus.append("path")
             .attr("d", d3.arc()
                 .innerRadius(radius)
-                .outerRadius(radius + 0.5)
+                .outerRadius(radius + 0.1)
                 .startAngle(0) // It's in radian, so Pi = 3.14 = bottom.
                 .endAngle(2 * Math.PI) // 2*Pi = 6.28 = top
-            ).attr('strok', '#bdbdbd');
+            ).style('stroke', '#000')
+            .style('stroke-width', '0.3');
 
-        subFocus.selectAll(type == 'sbj' ? '.s-alignbox' : '.q-alignbox')
-            .data(MAP_DATA["ranges"])
-            .enter()
-            .append("path")
-            .attr('id', d => (type == 'sbj' ? 's-' : 'q-') + d.id)
-            .attr('class', type == 'sbj' ? 'alignbox s-alignbox' : 'alignbox q-alignbox')
-            .attr("d", function(d) {
 
-                return type == 'sbj' ? getArrowedArc(radius + 12, radius + 20, coord2Angle(d.ssidx), coord2Angle(d.seidx), true) :
-                    getArrowedArc(radius - 10, radius - 2, coord2Angle(d.qsidx), coord2Angle(d.qeidx), d.strand);
-            })
-            .attr('fill', function() { return '#' + Math.floor(Math.random() * 16777215).toString(16) })
-            .on('mouseover', function() {
-                d3.selectAll('.alignbox').attr('opacity', '10%');
-                d3.select(this).attr('opacity', '100%');
-                var prefix = type == 'sbj' ? "#q-" : "#s-"
-                var sid = prefix + this.id.split('-')[1];
-                d3.select(sid).attr('opacity', '100%')
 
-            })
-            .on('mouseout', function() {
+        textg = qryfocus.append('g');
 
-                d3.selectAll('.alignbox').attr('opacity', '100%');
+        textg.append('text')
+            .attr('x', (radius / 4) * Math.cos(Math.PI))
+            .attr('y', (radius / 3) * Math.cos(Math.PI))
+            .text(data.accession)
+            .style("font-size", "1rem")
+            .style('font-weight', 600);
 
-            });
+        var half_pi = Math.PI / 2,
+            orfR = [radius - 8, radius - 3],
+            orfLblR = radius - 20;
+
+
+
+        $.each(data.orfs, function(i, d) {
+
+            qryfocus.append("path")
+                .attr('class', "orf " + d.type)
+                .attr("d", getArrowedArc(orfR[0], orfR[1], coord2Angle(d.sidx),
+                    coord2Angle(d.eidx), d.strand == 1))
+                .style('stroke', '#737373')
+                .style('stroke-width', 0.3);
+
+
+            if (d.type == 'args') {
+                textg.append('path')
+                    .attr('id', 'line-' + d.id)
+                    .attr("d", getORFLables(orfLblR, orfR[0], coord2Angle(d.sidx), coord2Angle(d.eidx)))
+                    .style('stroke', '#000')
+                    .style("stroke-dasharray", ("1,1"))
+                    .style('stroke-width', '0.6')
+                    .style('fill', 'none');
+
+
+                textg.append('text')
+                    .attr('x', orfLblR * Math.cos(coord2Angle(d.sidx) - half_pi))
+                    .attr('y', orfLblR * Math.sin(coord2Angle(d.sidx) - half_pi))
+                    .style("font-size", "0.25rem")
+                    .style('font-weight', 600).style('font-style', 'italic')
+                    .text(d.dscr)
+                    .on("mousedown", function(event) {
+                        event.preventDefault();
+
+                        this.style.cursor = "grabbing";
+                        touched = true;
+                    })
+                    .on('mouseleave mouseup', function(event) {
+                        touched = false; // signals mouse up for (D) and (E)
+                        this.style.cursor = "grab";
+                    })
+                    .on("mousemove", function(event) {
+
+                        if (!touched) return; // mousemove with the mouse up
+                        var t = d3.pointer(event);
+                        var line = qryfocus.select('#line-' + d.id);
+                        var sp = line.attr("d").split(" ")
+                        sp[sp.length - 1] = t[1] - 1
+                        sp[sp.length - 2] = t[0] + 1
+                        line.attr('d', sp.join(" "));
+
+                        $(this).attr('x', t[0] - 5)
+                            .attr('y', t[1] + 1)
+
+
+
+                    });
+
+            }
+
+        });
+
     }
 
+    function getORFLables(innerRadius, outerRadius, startAngle, endAngle) {
+        var half_pi = Math.PI / 2.0;
+
+        startAngle = startAngle - half_pi;
+        endAngle = endAngle - half_pi;
+
+        midAngle = startAngle + Math.abs(startAngle - endAngle) / 2;
+        midRadius = outerRadius - 5;
+        var x0 = outerRadius * Math.cos(midAngle),
+            y0 = outerRadius * Math.sin(midAngle),
+            x1 = midRadius * Math.cos(midAngle),
+            y1 = midRadius * Math.sin(midAngle),
+            x2 = innerRadius * Math.cos(endAngle),
+            y2 = innerRadius * Math.sin(endAngle);
+
+        var d = ["M", x0, y0, "L", x1, y1, "L", x2, y2]
+            // if (startAngle < Math.PI) {
+            //     d = ["M", x1, y1, "L", x0, y0]
+            // }
+        return d.join(' ');
+
+    }
 
     function getArrowedArc(innerRadius, outerRadius, startAngle, endAngle, strand) {
 
@@ -185,7 +253,7 @@ $(document).ready(function() {
         endAngle = endAngle - half_pi;
 
         var deltaAngle = Math.abs(endAngle - startAngle) % (2 * Math.PI),
-            ar = Math.abs(Math.min(0.02, 0.1 * deltaAngle)),
+            ar = Math.abs(Math.min(0.6, 0.3 * deltaAngle)),
             arrowAngle = endAngle;
 
         if (startAngle > endAngle) {
