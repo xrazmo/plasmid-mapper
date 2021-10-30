@@ -6,7 +6,7 @@ $(document).ready(function() {
 
     function initSVG() {
         var size = 400;
-        var radius = 110,
+        var radius = 150,
             radiusStep = 50;
 
 
@@ -19,7 +19,7 @@ $(document).ready(function() {
             .attr('id', 'focus')
             .attr("transform", "translate(" + size / 2 + "," + size / 2 + ")");
 
-        var qryId = 'p004KP_6'
+        var qryId = 'p165E_3'
         plotPlasmid(Contig_ref[qryId], radius);
 
         return { 'radius': radius, 'radiusStep': radiusStep, "size": size }
@@ -143,7 +143,7 @@ $(document).ready(function() {
                 .outerRadius(radius + 0.1)
                 .startAngle(0) // It's in radian, so Pi = 3.14 = bottom.
                 .endAngle(2 * Math.PI) // 2*Pi = 6.28 = top
-            ).style('stroke', '#000')
+            ).style('stroke', '#969696')
             .style('stroke-width', '0.3');
 
 
@@ -161,8 +161,6 @@ $(document).ready(function() {
             orfR = [radius - 8, radius - 3],
             orfLblR = radius - 20;
 
-
-
         $.each(data.orfs, function(i, d) {
 
             qryfocus.append("path")
@@ -171,9 +169,15 @@ $(document).ready(function() {
                     coord2Angle(d.eidx), d.strand == 1))
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
+            var isAnn = false;
+            $.each(data.annotations, function(i, ann) {
+                if (d.eidx >= ann.sidx && d.sidx <= ann.eidx) {
+                    isAnn = true;
+                    return 1;
+                }
+            });
 
-
-            if (d.type == 'args') {
+            if (d.type == 'args' && !isAnn) {
                 textg.append('path')
                     .attr('id', 'line-' + d.id)
                     .attr("d", getORFLables(orfLblR, orfR[0], coord2Angle(d.sidx), coord2Angle(d.eidx)))
@@ -208,17 +212,74 @@ $(document).ready(function() {
                         sp[sp.length - 1] = t[1] - 1
                         sp[sp.length - 2] = t[0] + 1
                         line.attr('d', sp.join(" "));
-
                         $(this).attr('x', t[0] - 5)
                             .attr('y', t[1] + 1)
-
-
-
                     });
 
             }
 
         });
+
+        // Zoom annotations
+        $.each(data.annotations, function(i, d) {
+            var recR = [orfR[0] - 5, radius + 6]
+            var sColor = '#dd3497'
+            qryfocus.append("path")
+                .attr("d", d3.arc()
+                    .innerRadius(recR[0])
+                    .outerRadius(recR[1])
+                    .startAngle(coord2Angle(d.sidx))
+                    .endAngle(coord2Angle(d.eidx))
+                ).style('fill', 'none')
+                .style('stroke', sColor)
+                .style('stroke-width', '0.5')
+                .style("stroke-dasharray", ("2,1"));
+
+            // #------------------
+            var qryLen = Math.abs(d.sidx - d.eidx);
+            var arcSidx = d.sidx - Math.min(2 * qryLen, qLen / 4),
+                arcEidx = d.eidx + Math.min(2 * qryLen, qLen / 4);
+
+            var ticks = d3.range(d.sidx, d.eidx, 1e3)
+            var tcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx), coord2Angle(arcEidx)]).domain([d.sidx, d.eidx]);
+            var tx = d3.scaleBand()
+                .range([coord2Angle(arcSidx), coord2Angle(arcEidx)])
+                .domain(d3.range(d.sidx, d.eidx));
+
+            var ty = d3.scaleRadial()
+                .range([recR[0] - 20, recR[0] - 18]) // Domain will be define later.
+                .domain([0, 2]);
+
+            var txAxis = qryfocus.append("g");
+
+            var ticks = txAxis.selectAll(".taxis")
+                .data(ticks)
+                .enter()
+                .append("g")
+                .attr("class", "taxis")
+                .attr("transform", function(d) { return "rotate(" + (tx(d) * 180 / Math.PI - 90) + ")" + "translate(" + ty(2) + ",0)"; });
+            ticks.append('line')
+                .attr("x2", -2).style('stroke', sColor);
+
+            txAxis.append("path")
+                .attr("d", getUnaligned_deletion(recR[0], recR[0] - 20, coord2Angle(d.sidx + (qryLen / 2)), coord2Angle(arcSidx), coord2Angle(arcEidx)))
+                .style('stroke', sColor)
+                .style("stroke-dasharray", ("1,1"))
+                .style('stroke-width', '0.5')
+                .attr('fill', 'None');
+
+            qryfocus.selectAll('.orf-s')
+                .data(data.orfs)
+                .enter()
+                .append('path').filter(orf => orf.eidx >= d.sidx && orf.sidx <= d.eidx)
+                .attr('class', orf => 'orf-s ' + orf.type)
+                .attr("d", orf => getArrowedArc(recR[0] - 28, recR[0] - 22, tcoord2Angle(orf.sidx),
+                    tcoord2Angle(orf.eidx), orf.strand == 1))
+                .style('stroke', '#737373')
+                .style('stroke-width', 0.3);
+
+        });
+
 
     }
 
@@ -253,7 +314,7 @@ $(document).ready(function() {
         endAngle = endAngle - half_pi;
 
         var deltaAngle = Math.abs(endAngle - startAngle) % (2 * Math.PI),
-            ar = Math.abs(Math.min(0.6, 0.3 * deltaAngle)),
+            ar = Math.abs(Math.min(0.02, 0.3 * deltaAngle)),
             arrowAngle = endAngle;
 
         if (startAngle > endAngle) {
