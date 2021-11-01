@@ -16,22 +16,26 @@
     <main role="main" class="container-fluid">
 
         <section class="container mt-4">
-            <p class="h1 text-center text-dark">Plasmid Mapper</p>
+            <p class="h1 text-center text-dark">Plasmid Viewer</p>
             <hr>
-            <form class="form">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="qry" id="revcom_qry">
-                    <label class="form-check-label" for="defaultCheck1">
-                      Rev. Compl. query sequence
-                    </label>
+            <div class="row">
+                <div class="col-6">
+                    <form class="form">
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <label class="input-group-text" for="qryselect">Query. ID</label>
+                            </div>
+                            <select class="custom-select" id="qryselect">
+                              <option selected>Choose...</option>
+                            </select>
+                        </div>
+                    </form>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="sbj" id="revcom_sbj">
-                    <label class="form-check-label" for="defaultCheck2">
-                        Rev. Compl. subject sequence
-                    </label>
+                <div class="col-6">
+                    <button type="button" class="btn btn-primary">Save</button>
                 </div>
-            </form>
+            </div>
+
         </section>
 
         <section id="main-section" class="mt-5">
