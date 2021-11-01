@@ -90,6 +90,7 @@ $(document).ready(function() {
             .style('font-weight', 600);
 
         var half_pi = Math.PI / 2,
+            pi2 = 2 * Math.PI,
             orfR = [radius - 8, radius - 3],
             orfLblR = radius - 20;
         var secondRadius,
@@ -118,7 +119,7 @@ $(document).ready(function() {
                 arcEidx = d.eidx + Math.min(2 * qryLen, qLen / 4);
 
             var ticks = d3.range(d.sidx, d.eidx, 1e3)
-            tcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx), coord2Angle(arcEidx)]).domain([d.sidx, d.eidx]);
+            tcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx) % pi2, coord2Angle(arcEidx) % pi2]).domain([d.sidx, d.eidx]);
             var tx = d3.scaleBand()
                 .range([coord2Angle(arcSidx), coord2Angle(arcEidx)])
                 .domain(d3.range(d.sidx, d.eidx));
@@ -183,16 +184,18 @@ $(document).ready(function() {
                     .attr("teta", tcoord2Angle(d.sidx) - half_pi)
                     .style('stroke', '#000')
                     .style("stroke-dasharray", ("1,1"))
-                    .style('stroke-width', '0.3')
+                    .style('stroke-width', '0.1')
                     .style('fill', 'none');
+
 
 
                 textg.append('text')
                     .attr('x', orfLblR * Math.cos(tcoord2Angle(d.sidx) - half_pi))
                     .attr('y', orfLblR * Math.sin(tcoord2Angle(d.sidx) - half_pi))
+                    .attr('teta', tcoord2Angle(d.sidx))
                     .style("font-size", "0.25rem")
                     .style('font-weight', 600).style('font-style', 'italic')
-                    .text(d.dscr)
+                    .text(d.dscr.replace('family transposase', ''))
                     .on("mousedown", function(event) {
                         event.preventDefault();
 
@@ -204,44 +207,49 @@ $(document).ready(function() {
                         this.style.cursor = "grab";
                     })
                     .on("mousemove", function(event) {
-
+                        event.preventDefault();
                         if (!touched) return; // mousemove with the mouse up
 
-                        var t = d3.pointer(event);
+                        var t = d3.pointer(event),
+                            x1 = t[0],
+                            y1 = t[1];
+
                         var line = qryfocus.select('#line-' + d.id);
-                        var sp = line.attr("d").split(" ")
-                        var bias = [1, -2];
+                        var sp = line.attr("d").split(" ");
+                        var x, y, x0 = sp[1],
+                            y0 = sp[2];
+                        // var xt = 0,
+                        //     yt = 0;
                         // var t0 = this.getBoundingClientRect()
-                        // console.log(t0);
-                        // console.log(t);
 
-                        if (line.attr("teta") % 2 * Math.PI < 3 * half_pi) {
-                            bias = [-1, 2]
-
+                        var txt = $(this).text();
+                        x = x1, y = y1;
+                        var bias = txt.length < 10 ? 3 : Math.max(5, Math.min(30, 1.5 * txt.length));
+                        if (x0 > x1) {
+                            x = x - bias;
                         }
-                        sp[sp.length - 2] = t[0] + bias[0]
-                        sp[sp.length - 1] = t[1] + bias[1]
+                        if (y1 > y0) {
+                            y = y + 1;
+                        }
+
+
+                        console.log(x0 + ',' + y0 + '  ' + x1 + ',' + y1);
+                        console.log(bias);
+
+                        sp[sp.length - 2] = x1
+                        sp[sp.length - 1] = y1
 
                         line.attr('d', sp.join(" "));
-                        $(this).attr('x', t[0] - 5)
-                            .attr('y', t[1] + 1)
+                        $(this).attr('x', x - 5)
+                            .attr('y', y + 2)
+                            // .attr('transform', 'translate(' + xt + ',' + yt + ')')
+
                     });
 
             }
 
         });
 
-        // Zoom annotations
-
-        // qryfocus.selectAll('.orf-s')
-        // .data(data.orfs)
-        // .enter()
-        // .append('path').filter(orf => orf.eidx >= d.sidx && orf.sidx <= d.eidx)
-        // .attr('class', orf => 'orf-s ' + orf.type)
-        // .attr("d", orf => getArrowedArc(recR[0] - 28, recR[0] - 22, tcoord2Angle(orf.sidx),
-        //     tcoord2Angle(orf.eidx), orf.strand == 1))
-        // .style('stroke', '#737373')
-        // .style('stroke-width', 0.3);
 
     }
 
@@ -257,8 +265,8 @@ $(document).ready(function() {
             y0 = outerRadius * Math.sin(midAngle),
             x1 = midRadius * Math.cos(midAngle),
             y1 = midRadius * Math.sin(midAngle),
-            x2 = innerRadius * Math.cos(midAngle),
-            y2 = innerRadius * Math.sin(midAngle);
+            x2 = innerRadius * Math.cos(endAngle),
+            y2 = innerRadius * Math.sin(endAngle);
 
         var d = ["M", x0, y0, "L", x1, y1, "L", x2, y2]
             // if (startAngle < Math.PI) {
