@@ -39,14 +39,17 @@ table {
 
 .m {
     stroke: #e34a33;
+    stroke-width: 0.1px;
 }
 
 .s {
-    stroke: #16d3c3;
+    stroke: #d316c3;
+    stroke-width: 0.1px;
 }
 
 .q {
-    stroke: #542788;
+    stroke: #f8f412;
+    stroke-width: 0.1px;
 }
 
 .other {
@@ -55,6 +58,17 @@ table {
 
 .args {
     fill: #a50f15;
+}
+
+.e-ring {
+    fill: #f0f0f099;
+    stroke: #1d1c1c;
+    stroke-width: 0.1;
+    stroke-dasharray: 5;
+}
+
+.o-ring {
+    fill: none;
 }
 
 .hypothetical {
@@ -86,9 +100,9 @@ table {
 }
 
 .axis {
-    stroke-width: 0.3px;
+    stroke-width: 0.2px;
     stroke: #000;
-    font: 4px avenir next, sans-serif;
+    font: 5px avenir next, sans-serif;
 }
 
 .axis>path {
