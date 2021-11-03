@@ -263,19 +263,21 @@ $(document).ready(function() {
                 orfLblR = secondRadius + 10
                 textg.append('path')
                     .attr('id', 'line-' + d.id)
-                    .attr("d", getORFLables(secondRadius + 8, secondRadius + 18, tcoord2Angle(d.sidx), tcoord2Angle(d.eidx)))
-                    .attr("teta", tcoord2Angle(d.sidx) - half_pi)
+                    .attr("d", getORFLables(secondRadius + 8, secondRadius + 18,
+                        tcoord2Angle(d.sidx), tcoord2Angle(d.eidx)))
                     .style('stroke', '#000')
                     .style("stroke-dasharray", ("1,1"))
                     .style('stroke-width', '0.1')
                     .style('fill', 'none');
 
 
-                var midPoint = d.sidx + Math.abs(d.sidx - d.eidx);
-                textg.append('text')
-                    .attr('x', (secondRadius + 18) * Math.cos(tcoord2Angle(midPoint) - half_pi))
-                    .attr('y', (secondRadius + 18) * Math.sin(tcoord2Angle(midPoint) - half_pi))
-                    // .attr('teta', tcoord2Angle(d.sidx))
+                var midPoint = d.sidx + Math.abs(d.sidx - d.eidx),
+                    x = (secondRadius + 18) * Math.cos(tcoord2Angle(midPoint) - half_pi),
+                    y = (secondRadius + 18) * Math.sin(tcoord2Angle(midPoint) - half_pi);
+                textg.append('g').append('text')
+                    .attr('x', x)
+                    .attr('y', y)
+                    .attr('transform', 'rotate(0,' + x + ',' + y + ')')
                     .style("font-size", "0.35rem")
                     .style('font-weight', 600).style('font-style', 'italic')
                     .text(d.dscr.replace('family transposase', ''))
@@ -284,10 +286,13 @@ $(document).ready(function() {
 
                         this.style.cursor = "grabbing";
                         touched = true;
+                        d3.select(this).style('font-size', '0.7rem');
                     })
                     .on('mouseleave mouseup', function(event) {
                         touched = false; // signals mouse up for (D) and (E)
                         this.style.cursor = "grab";
+                        d3.select(this).style('font-size', '0.35rem');
+
                     })
                     .on("mousemove", function(event) {
                         event.preventDefault();
@@ -301,32 +306,41 @@ $(document).ready(function() {
                         var sp = line.attr("d").split(" ");
                         var x, y, x0 = sp[1],
                             y0 = sp[2];
-                        // var xt = 0,
-                        //     yt = 0;
-                        // var t0 = this.getBoundingClientRect()
-
                         var txt = $(this).text();
                         x = x1, y = y1;
-                        var bias = txt.length < 20 ? 0 : Math.max(5, Math.min(80, 1.5 * txt.length));
+                        var bias = 0; // txt.length < 20 ? 0 : Math.max(5, 2 * txt.length);
                         if (x0 > x1) {
-                            x = x - bias;
+                            x = x + bias;
                         }
                         if (y1 > y0) {
                             y = y + 1;
                         }
-
-
-                        // console.log(x0 + ',' + y0 + '  ' + x1 + ',' + y1);
-                        // console.log(bias);
-
-                        sp[sp.length - 2] = x1
-                        sp[sp.length - 1] = y1
+                        sp[sp.length - 2] = x
+                        sp[sp.length - 1] = y
 
                         line.attr('d', sp.join(" "));
-                        $(this).attr('x', x - 3)
-                            .attr('y', y + 2)
-                            // .attr('transform', 'translate(' + xt + ',' + yt + ')')
+                        $(this).attr('x', x1 - 5)
+                            .attr('y', y1 + 2);
 
+                        var tr = d3.select(this).attr("transform");
+                        pp = tr.replace('rotate(', '').replace(');', '').split(',')
+                        $(this).attr('transform', 'rotate(' + pp[0] +
+                            ',' + (x1 - 5) + ',' + (y1 + 2) + ')');
+
+                    }).on('mousewheel', function(event) {
+
+                        event.preventDefault();
+                        var sig = event.wheelDelta > 0 ? 1 : -1;
+                        var x1 = parseInt($(this).attr('x')),
+                            y1 = parseInt($(this).attr('y'));
+
+                        var line = qryfocus.select('#line-' + d.id);
+                        var sp = line.attr("d").split(" ");
+
+                        var tr = d3.select(this).attr("transform");
+                        pp = tr.replace('rotate(', '').replace(');', '').split(',')
+                        $(this).attr('transform', 'rotate(' + (parseInt(pp[0]) + sig * 5) +
+                            ',' + x1 + ',' + y1 + ')');
                     });
 
             }
