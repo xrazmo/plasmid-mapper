@@ -14,7 +14,7 @@ $(document).ready(function() {
     }
 
     function initSVG(qryId) {
-        var size = 700;
+        var size = 800;
         var radius = 260,
             radiusStep = -20;
 
@@ -24,13 +24,16 @@ $(document).ready(function() {
         svg.attr("viewBox", "0 0 " + size + ' ' + size)
             .attr('xmlns', "http://www.w3.org/2000/svg")
             .attr('version', "1.1");
-        svg.append('g')
+        var focus = svg.append('g')
             .attr('id', 'focus')
             .attr("transform", "translate(" + size / 2 + "," + size / 2 + ")");
 
         plotPlasmid(Contig_ref[qryId], radius);
         var exR = radius;
         ringNr = 0
+        focus.append('g')
+            .attr('class', 'blast-focus')
+            .attr('id', 'bl-focus');
         $.each(MAP_DATA, function(key, data) {
 
             if (data.qseqid == qryId) {
@@ -40,14 +43,76 @@ $(document).ready(function() {
 
             }
         });
+        plotLegend(qryId);
 
+    }
+
+    function plotLegend(qryId) {
+        var legend = d3.select('#focus').append('g')
+        var orf_labels = {
+            'ARGs': { 'kl': 'args', 'coef': 1.5 },
+            'Insertion sequences': { 'kl': 'isel', 'coef': 3.9 },
+            "Transposons": { 'kl': "transposase", 'coef': 2.5 },
+            'Virulence factors': { 'kl': 'virulence', 'coef': 3.1 },
+            'Biocide and metal resistance': { 'kl': 'biocidemetal', 'coef': 5 },
+            "Integron": { 'kl': "integrase", 'coef': 2 },
+            "Hypothetical proteins": { 'kl': 'hypothetical', 'coef': 4 },
+            "Other": { 'kl': "other", 'coef': 1 },
+
+        }
+        var lengendAngle = { "s082Km_2": -half_pi, "m481ECL_2": -half_pi }
+        var radius = controls.radius,
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
+            k = 0,
+            step = Math.PI / 60;
+        var ta, tb, bias, sa, sb;
+        var lgTxt = legend.append('text');
+
+
+        $.each(orf_labels, function(txt, d) {
+
+            ta = sAngle + (k * step),
+                tb = sAngle + (k + d.coef) * step,
+                bias = (tb - step - ta) / 2
+            sa = ta + bias,
+                sb = sa + step;
+            legend.append("path")
+                .attr('class', "orf " + d.kl)
+                .attr("d", getArrowedArc(radius + 20, radius + 25, sa, sb, true))
+                .style('stroke', '#737373')
+                .style('stroke-width', 0.3);
+
+            legend.append("path")
+                .attr('id', 'lgd-' + d.kl)
+                .attr("d", d3.arc()
+                    .innerRadius(radius + 28)
+                    .outerRadius(radius + 29)
+                    .startAngle(ta)
+                    .endAngle(tb))
+                .style('stroke', 'none').style('fill', 'none')
+
+            lgTxt.append("textPath")
+                .attr("xlink:href", "#lgd-" + d.kl)
+                .text(txt)
+                .attr("startOffset", "0%")
+                .style('font-size', '0.35rem').style('font-weight', 600);
+            k += d.coef
+        });
+
+        legend.append("path")
+            .attr("d", d3.arc()
+                .innerRadius(radius + 15)
+                .outerRadius(radius + 35)
+                .startAngle(sAngle - (half_pi / 90))
+                .endAngle(tb + (half_pi / 90)))
+            .style('stroke', '#bdbdbd')
+            .style('fill', '#bdbdbd2e').style('stroke-width', '0.5');
 
     }
 
     function plotBlastRings(data, radius) {
         var qLen = data.qlen;
-        var focus = d3.select('#focus');
-        var bl_focus = focus.append('g').attr('class', 'blast-focus');
+        var bl_focus = d3.select('#bl-focus');
         var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, qLen])
         var arcW = 5,
             panelW = 20,
@@ -458,6 +523,45 @@ $(document).ready(function() {
             "A", outerRadius, outerRadius, 1, lgflag, 1, x3, y3,
         ];
 
+
+
+        return d.join(' ');
+
+    }
+
+    function getORF(from, to, lineWidth, arrowheadWidth, arrowheadLength) {
+        var dx = to.x - from.x;
+        var dy = to.y - from.y;
+
+        // Calculate the length of the line
+        var len = Math.sqrt(dx * dx + dy * dy);
+
+        if (len < arrowheadLength) {
+
+            var rx = 0.5 * dx,
+                ry = 1.5;
+            // return 'M '+dx+' '+dy+' m -'+r+', 0 a '+r+','+r+' 0 1,0 '+(r*2)+',0 a '+r+','+r+' 0 1,0 -'+(r*2)+',0';
+            var d = ['M' + (-rx), '0a' + rx, ry + " 0 1", "0 " + (2 * rx), '0a' + rx, ry + " 0 1", "0 " + (-2 * rx), "0"];
+
+            return d.join(' ');
+        } else {
+
+
+            var dW = arrowheadWidth - lineWidth;
+
+            var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+
+            var d = ['M', 0, -lineWidth / 2,
+                'h', len - arrowheadLength,
+                'v', -dW / 2,
+                'L', len, 0,
+                'L', len - arrowheadLength, arrowheadWidth / 2,
+                'v', -dW / 2,
+                'H', 0,
+                'Z'
+            ];
+        }
 
 
         return d.join(' ');
