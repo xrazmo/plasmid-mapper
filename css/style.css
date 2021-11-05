@@ -28,6 +28,17 @@ table {
     fill: #ffffe5;
 }
 
+.my-custom-scrollbar {
+    position: relative;
+    height: 500px;
+    overflow: auto;
+    box-shadow: 1px 3px #888888;
+}
+
+.table-wrapper-scroll-y {
+    display: block;
+}
+
 .e-ring {
     fill: #f0f0f099;
     stroke: #1d1c1c;
@@ -37,6 +48,11 @@ table {
 
 .o-ring {
     fill: none;
+}
+
+.big-checkbox {
+    width: 20px;
+    height: 20px;
 }
 
 
@@ -49,18 +65,18 @@ table {
 } */
 
 .m {
-    stroke: #e34a33;
-    stroke-width: 0.1px;
+    stroke: #f32707;
+    stroke-width: 0.2px;
 }
 
 .s {
-    stroke: #d316c3;
-    stroke-width: 0.1px;
+    stroke: #f32707;
+    stroke-width: 0.2px;
 }
 
 .q {
-    stroke: #f8f412;
-    stroke-width: 0.1px;
+    stroke: #f32707;
+    stroke-width: 0.2px;
 }
 
 .other {

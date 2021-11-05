@@ -32,10 +32,16 @@
                     </form>
                 </div>
                 <div class="col-6">
-                    <button type="button" class="btn btn-primary">Save</button>
+                    <button id='uptBtn' type="button" class="btn btn-info">Update</button>
+                    <button id='svBtn' type="button" class="btn btn-secondary">Save</button>
+                </div>
+
+            </div>
+            <div class="row">
+                <div class="table-wrapper-scroll-y my-custom-scrollbar ">
+                    <table id='tbl-main' class="table table-bordered table-striped table-sm"></table>
                 </div>
             </div>
-
         </section>
 
         <section id="main-section" class="mt-5">
@@ -44,35 +50,6 @@
 
     </main>
 
-    <div class="modal fade" id="colorsModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalCenterTitle">Colors Guide</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-                </div>
-                <div class="modal-body">
-                    <div class="container-fluid">
-                        <div class="row">
-                            <div class="col-12">
-                                <svg id="colorguid">
-
-                  </svg>
-                            </div>
-                        </div>
-
-                    </div>
-                    <!--/container-fluid-->
-                </div>
-                <!--/modal-body-->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
 </body>
 

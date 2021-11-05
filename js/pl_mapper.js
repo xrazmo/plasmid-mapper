@@ -1,7 +1,7 @@
 $(document).ready(function() {
 
 
-    var controls, touched, ringNr;
+    var controls, touched, ringNr, selected_alignments = [];
     const half_pi = Math.PI / 2.0;
     initForm()
 
@@ -13,7 +13,7 @@ $(document).ready(function() {
         });
     }
 
-    function initSVG(qryId) {
+    function update_page(qryId) {
         var size = 800;
         var radius = 260,
             radiusStep = -20;
@@ -24,26 +24,41 @@ $(document).ready(function() {
         svg.attr("viewBox", "0 0 " + size + ' ' + size)
             .attr('xmlns', "http://www.w3.org/2000/svg")
             .attr('version', "1.1");
-        var focus = svg.append('g')
+        svg.append('g')
             .attr('id', 'focus')
             .attr("transform", "translate(" + size / 2 + "," + size / 2 + ")");
 
+        var data = [];
         plotPlasmid(Contig_ref[qryId], radius);
-        var exR = radius;
-        ringNr = 0
-        focus.append('g')
-            .attr('class', 'blast-focus')
-            .attr('id', 'bl-focus');
-        $.each(MAP_DATA, function(key, data) {
+        var columns = ["#", "select", "qcov", "sseqid", "stitle"]
 
-            if (data.qseqid == qryId) {
-                ringNr += 1
-                exR += radiusStep;
-                plotBlastRings(data, exR);
+        $.each(MAP_DATA, function(key, d) {
+
+            if (d.qseqid == qryId) {
+                var tmpDic = { id: key }
+                columns.map(function(col) {
+                    tmpDic[col] = d[col];
+                });
+
+                data.push(tmpDic);
 
             }
         });
+        tabulate(data, columns);
+        $('.big-checkbox').change(function() {
+            var id = $(this).attr('id');
+            if (this.checked) {
+                selected_alignments.push(id);
+            } else {
+                index = selected_alignments.indexOf(id);
+                if (index > -1) {
+                    selected_alignments.splice(index, 1);
+                }
+            }
+
+        });
         plotLegend(qryId);
+        return controls;
 
     }
 
@@ -141,7 +156,7 @@ $(document).ready(function() {
                     .outerRadius(outterR)
                     .startAngle(coord2Angle(rng.qstart))
                     .endAngle(coord2Angle(rng.qend)))
-                .attr('fill', '#c6dbef')
+                .attr('fill', '#c6dbef7a')
                 //d => "#" + Math.floor(Math.random() * 16777215).toString(16));
             bl_focus.selectAll('.miss_line-' + i)
                 .data(rng.line_annot)
@@ -529,50 +544,104 @@ $(document).ready(function() {
 
     }
 
-    function getORF(from, to, lineWidth, arrowheadWidth, arrowheadLength) {
-        var dx = to.x - from.x;
-        var dy = to.y - from.y;
-
-        // Calculate the length of the line
-        var len = Math.sqrt(dx * dx + dy * dy);
-
-        if (len < arrowheadLength) {
-
-            var rx = 0.5 * dx,
-                ry = 1.5;
-            // return 'M '+dx+' '+dy+' m -'+r+', 0 a '+r+','+r+' 0 1,0 '+(r*2)+',0 a '+r+','+r+' 0 1,0 -'+(r*2)+',0';
-            var d = ['M' + (-rx), '0a' + rx, ry + " 0 1", "0 " + (2 * rx), '0a' + rx, ry + " 0 1", "0 " + (-2 * rx), "0"];
-
-            return d.join(' ');
-        } else {
 
 
-            var dW = arrowheadWidth - lineWidth;
 
-            var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    function tabulate(data, columns) {
 
+        var table = d3.select('#tbl-main')
+        var thead = table.append('thead')
+        var tbody = table.append('tbody');
 
-            var d = ['M', 0, -lineWidth / 2,
-                'h', len - arrowheadLength,
-                'v', -dW / 2,
-                'L', len, 0,
-                'L', len - arrowheadLength, arrowheadWidth / 2,
-                'v', -dW / 2,
-                'H', 0,
-                'Z'
-            ];
-        }
+        // append the header row
+        thead.append('tr')
+            .selectAll('th')
+            .data(columns).enter()
+            .append('th')
+            .text(function(column) { return column; });
 
+        // create a row for each object in the data
 
-        return d.join(' ');
+        var rows = tbody.selectAll('tr')
+            .data(data)
+            .enter()
+            .append('tr');
+
+        // create a cell in each row for each column
+        var rownr = 0
+        rows.selectAll('td')
+            .data(function(row) {
+
+                return columns.map(function(column) {
+                    if (column == "select") {
+                        return { column: "select", id: row['id'] }
+                    }
+                    return { column: column, value: row[column] };
+                });
+            })
+            .enter()
+            .append('td')
+            .html(function(d) {
+
+                var colW = 80;
+                if (d.column == '#') {
+                    rownr = rownr + 1
+                    return rownr;
+                } else if (d.column == 'sseqid') { return "<a href='https://www.ncbi.nlm.nih.gov/nuccore/" + d.value + "' target='_blank'>" + d.value + "</a>" } else if (d.column == 'select') { return "<input type=\"checkbox\" class=\"big-checkbox\" id=\"" + d.id + "\"></input>" }
+
+                return chunkSubstr(d.value, colW);
+            });
 
     }
 
+    function chunkSubstr(in_str, size) {
+        if (typeof in_str == 'undefined' || typeof in_str == 'number') {
+            return in_str
+        }
+        const numChunks = Math.ceil(in_str.length / size)
+            //   const chunks = new Array(numChunks)
+        var new_str = "";
+        for (let i = 0, o = 0; i < numChunks; ++i, o += size) {
+            // chunks[i] = str.substr(o, size)
+            new_str = new_str + "<br>" + in_str.substr(o, size)
+
+        }
+
+        return new_str;
+    }
+
+
     $("#qryselect").on('change', function() {
         d3.select("#main-svg").selectAll('*').remove();
-        controls = initSVG(this.value);
+        d3.select("#tbl-main").selectAll('*').remove();
+        selected_alignments = [];
+        controls = update_page(this.value);
     });
+
     $('#qryselect').val('p004KP_6').change();
 
+
+    $('#uptBtn').on('click', function(event) {
+        var focus = d3.select('#focus')
+        focus.selectAll('.blast-focus').remove();
+        focus.append('g')
+            .attr('class', 'blast-focus')
+            .attr('id', 'bl-focus');
+
+        if (selected_alignments.length > 0) {
+
+            var exR = controls.radius;
+            ringNr = 0
+
+            $.each(selected_alignments, function(i, key) {
+                ringNr += 1
+                exR += controls.radiusStep;
+                plotBlastRings(MAP_DATA[key], exR);
+
+            });
+
+        }
+
+    });
 
 });
