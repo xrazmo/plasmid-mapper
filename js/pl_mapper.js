@@ -94,6 +94,7 @@ $(document).ready(function() {
             legend.append("path")
                 .attr('class', "orf " + d.kl)
                 .attr("d", getArrowedArc(radius + 20, radius + 25, sa, sb, true))
+                .style('fill', ORF_COLOR[d.kl])
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
 
@@ -121,7 +122,8 @@ $(document).ready(function() {
                 .startAngle(sAngle - (half_pi / 90))
                 .endAngle(tb + (half_pi / 90)))
             .style('stroke', '#bdbdbd')
-            .style('fill', '#bdbdbd2e').style('stroke-width', '0.5');
+            .style('fill', '#bdbdbd2e')
+            .style('stroke-width', '0.5');
 
     }
 
@@ -143,7 +145,8 @@ $(document).ready(function() {
                 .innerRadius(p_inR)
                 .outerRadius(p_outR)
                 .startAngle(0)
-                .endAngle(2 * Math.PI));
+                .endAngle(2 * Math.PI))
+            .style('fill', ringNr % 2 == 0 ? "#f0f0f099" : "none");
 
 
         $.each(data.ranges, function(i, rng) {
@@ -171,7 +174,7 @@ $(document).ready(function() {
                         x1 = outterR * Math.cos(angle),
                         y1 = outterR * Math.sin(angle);
                     return ["M", x0, y0, "L", x1, y1].join(' ')
-                })
+                }).style('stroke-width', 0.2).style('stroke', d => Mismatch_COLOR[d.t]);
 
 
 
@@ -220,7 +223,11 @@ $(document).ready(function() {
             .append("g")
             .attr("class", "axis")
             .attr("text-anchor", function(d) { return (x(d) + Math.PI) % (2 * Math.PI) < Math.PI ? "end" : "start"; })
-            .attr("transform", function(d) { return "rotate(" + (x(d) * 180 / Math.PI - 90) + ")" + "translate(" + y(0) + ",0)"; });
+            .attr("transform", function(d) { return "rotate(" + (x(d) * 180 / Math.PI - 90) + ")" + "translate(" + y(0) + ",0)"; })
+            .style('stroke', '#000')
+            .style('stroke-width', '0.2px')
+            .style('font', '5px avenir next, sans-serif');
+
         xAxis.append('line')
             .attr("x2", 6);
 
@@ -325,6 +332,7 @@ $(document).ready(function() {
                 .attr('class', "orf " + d.type)
                 .attr("d", getArrowedArc(orfR[0], orfR[1], coord2Angle(d.sidx),
                     coord2Angle(d.eidx), d.strand == 1))
+                .style('fill', ORF_COLOR[d.type])
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
 
@@ -334,6 +342,7 @@ $(document).ready(function() {
                     .attr('class', "orf " + d.type)
                     .attr("d", getArrowedArc(secondRadius + 2, secondRadius + 8, tcoord2Angle(d.sidx),
                         tcoord2Angle(d.eidx), d.strand == 1))
+                    .style('fill', ORF_COLOR[d.type])
                     .style('stroke', '#737373')
                     .style('stroke-width', 0.3);
             }
@@ -544,9 +553,6 @@ $(document).ready(function() {
 
     }
 
-
-
-
     function tabulate(data, columns) {
 
         var table = d3.select('#tbl-main')
@@ -611,17 +617,58 @@ $(document).ready(function() {
     }
 
 
+    function saveSVG(svgTag, linkTag) {
+
+        var svg = document.getElementById(svgTag);
+        //get svg source.
+        var serializer = new XMLSerializer();
+        var source = serializer.serializeToString(svg);
+
+        //add name spaces.
+        if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+        }
+
+        //add xml declaration
+        source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+
+        //convert svg source to URI data scheme.
+        var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+        //set url value to a element's href attribute.
+        fill_link(linkTag, url);
+    }
+
     $("#qryselect").on('change', function() {
         d3.select("#main-svg").selectAll('*').remove();
         d3.select("#tbl-main").selectAll('*').remove();
         selected_alignments = [];
+        fill_link("saveLink", '');
         controls = update_page(this.value);
     });
 
     $('#qryselect').val('p004KP_6').change();
 
 
+
+    function fill_link(linkTag, url) {
+        var lnk = document.getElementById(linkTag);
+
+        if (url.length > 1) {
+            lnk.href = url;
+            $(lnk).addClass('text-primary')
+            $(lnk).removeClass('text-hide')
+        } else {
+            $(lnk).removeAttr('href');
+            $(lnk).removeClass('text-primary')
+            $(lnk).addClass('text-hide')
+        }
+    }
+
     $('#uptBtn').on('click', function(event) {
+        fill_link("saveLink", '');
         var focus = d3.select('#focus')
         focus.selectAll('.blast-focus').remove();
         focus.append('g')
@@ -644,4 +691,7 @@ $(document).ready(function() {
 
     });
 
+    $('#genBtn').on('click', function(event) {
+        saveSVG("main-svg", "saveLink");
+    });
 });
