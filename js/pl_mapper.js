@@ -1,7 +1,7 @@
 $(document).ready(function() {
 
 
-    var controls, touched, ringNr, selected_alignments = [];
+    var controls, touched, ringNr, qryId, selected_alignments = [];
     const half_pi = Math.PI / 2.0;
     initForm()
 
@@ -23,7 +23,8 @@ $(document).ready(function() {
 
         svg.attr("viewBox", "0 0 " + size + ' ' + size)
             .attr('xmlns', "http://www.w3.org/2000/svg")
-            .attr('version', "1.1");
+            .attr('version', "1.1")
+            .style('font', 'avenir next, sans-serif');
         svg.append('g')
             .attr('id', 'focus')
             .attr("transform", "translate(" + size / 2 + "," + size / 2 + ")");
@@ -111,7 +112,8 @@ $(document).ready(function() {
                 .attr("xlink:href", "#lgd-" + d.kl)
                 .text(txt)
                 .attr("startOffset", "0%")
-                .style('font-size', '0.35rem').style('font-weight', 600);
+                .style('font-size', '5px')
+                .style('font-weight', 700);
             k += d.coef
         });
 
@@ -122,7 +124,7 @@ $(document).ready(function() {
                 .startAngle(sAngle - (half_pi / 90))
                 .endAngle(tb + (half_pi / 90)))
             .style('stroke', '#bdbdbd')
-            .style('fill', '#bdbdbd2e')
+            .style('fill', 'none')
             .style('stroke-width', '0.5');
 
     }
@@ -146,7 +148,7 @@ $(document).ready(function() {
                 .outerRadius(p_outR)
                 .startAngle(0)
                 .endAngle(2 * Math.PI))
-            .style('fill', ringNr % 2 == 0 ? "#f0f0f099" : "none");
+            .style('fill', ringNr % 2 == 0 ? "#f0f0f0" : "none");
 
 
         $.each(data.ranges, function(i, rng) {
@@ -159,7 +161,7 @@ $(document).ready(function() {
                     .outerRadius(outterR)
                     .startAngle(coord2Angle(rng.qstart))
                     .endAngle(coord2Angle(rng.qend)))
-                .attr('fill', '#c6dbef7a')
+                .attr('fill', '#c6dbef')
                 //d => "#" + Math.floor(Math.random() * 16777215).toString(16));
             bl_focus.selectAll('.miss_line-' + i)
                 .data(rng.line_annot)
@@ -175,9 +177,6 @@ $(document).ready(function() {
                         y1 = outterR * Math.sin(angle);
                     return ["M", x0, y0, "L", x1, y1].join(' ')
                 }).style('stroke-width', 0.2).style('stroke', d => Mismatch_COLOR[d.t]);
-
-
-
 
         });
 
@@ -195,7 +194,7 @@ $(document).ready(function() {
             .attr("xlink:href", "#hp" + data.sseqid)
             .text(data.stitle)
             .attr("startOffset", "0%")
-            .style('font', '6px sans-serif');
+            .style('font-size', '6px');
 
 
     }
@@ -212,7 +211,7 @@ $(document).ready(function() {
             .domain(d3.range(0, qLen));
 
         var y = d3.scaleRadial()
-            .range([radius - 5, radius - 1]) // Domain will be define later.
+            .range([radius - 6, radius - 1]) // Domain will be define later.
             .domain([0, 2]);
 
 
@@ -226,10 +225,10 @@ $(document).ready(function() {
             .attr("transform", function(d) { return "rotate(" + (x(d) * 180 / Math.PI - 90) + ")" + "translate(" + y(0) + ",0)"; })
             .style('stroke', '#000')
             .style('stroke-width', '0.2px')
-            .style('font', '5px avenir next, sans-serif');
+            .style('font-size', '5px').style('font-weight', 600);
 
         xAxis.append('line')
-            .attr("x2", 6);
+            .attr("x1", 8);
 
         xAxis.attr("stroke", "#bdbdbd")
             .append("text")
@@ -314,7 +313,7 @@ $(document).ready(function() {
                 .style('stroke', sColor)
                 .style("stroke-dasharray", ("1,1"))
                 .style('stroke-width', '0.5')
-                .attr('fill', 'None');
+                .attr('fill', 'none');
 
         });
 
@@ -367,7 +366,7 @@ $(document).ready(function() {
                     .attr('x', x)
                     .attr('y', y)
                     .attr('transform', 'rotate(0,' + x + ',' + y + ')')
-                    .style("font-size", "0.35rem")
+                    .style("font-size", "6px")
                     .style('font-weight', 600).style('font-style', 'italic')
                     .text(d.dscr.replace('family transposase', ''))
                     .on("mousedown", function(event) {
@@ -380,7 +379,7 @@ $(document).ready(function() {
                     .on('mouseleave mouseup', function(event) {
                         touched = false; // signals mouse up for (D) and (E)
                         this.style.cursor = "grab";
-                        d3.select(this).style('font-size', '0.35rem');
+                        d3.select(this).style('font-size', '6px');
 
                     })
                     .on("mousemove", function(event) {
@@ -617,55 +616,16 @@ $(document).ready(function() {
     }
 
 
-    function saveSVG(svgTag, linkTag) {
-
-        var svg = document.getElementById(svgTag);
-        //get svg source.
-        var serializer = new XMLSerializer();
-        var source = serializer.serializeToString(svg);
-
-        //add name spaces.
-        if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
-            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-        }
-        if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
-            source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
-        }
-
-        //add xml declaration
-        source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
-
-        //convert svg source to URI data scheme.
-        var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
-        //set url value to a element's href attribute.
-        fill_link(linkTag, url);
-    }
-
     $("#qryselect").on('change', function() {
         d3.select("#main-svg").selectAll('*').remove();
         d3.select("#tbl-main").selectAll('*').remove();
         selected_alignments = [];
         fill_link("saveLink", '');
-        controls = update_page(this.value);
+        qryId = this.value;
+        controls = update_page(qryId);
     });
 
     $('#qryselect').val('p004KP_6').change();
-
-
-
-    function fill_link(linkTag, url) {
-        var lnk = document.getElementById(linkTag);
-
-        if (url.length > 1) {
-            lnk.href = url;
-            $(lnk).addClass('text-primary')
-            $(lnk).removeClass('text-hide')
-        } else {
-            $(lnk).removeAttr('href');
-            $(lnk).removeClass('text-primary')
-            $(lnk).addClass('text-hide')
-        }
-    }
 
     $('#uptBtn').on('click', function(event) {
         fill_link("saveLink", '');
@@ -691,7 +651,37 @@ $(document).ready(function() {
 
     });
 
+
     $('#genBtn').on('click', function(event) {
-        saveSVG("main-svg", "saveLink");
+        // saveSVG("main-svg", "saveLink");
+
+        var svgString = new XMLSerializer().serializeToString(document.querySelector('svg'));
+
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        var DOMURL = self.URL || self.webkitURL || self;
+        var img = new Image();
+        var svg = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+        var url = DOMURL.createObjectURL(svg);
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0);
+            var png = canvas.toDataURL("image/png");
+            // document.querySelector('#png-container').innerHTML = '<img src="' + png + '"/>';
+            saveAs(png, qryId + ".png");
+            DOMURL.revokeObjectURL(png);
+        };
+        img.src = url;
+    });
+
+
+    $('.inpt').on('change', function() {
+        var id = $(this).attr('id');
+        if (id == 'width-inpt') {
+            $('#canvas').attr('width', $(this).val() + 'px')
+
+        } else {
+            $('#canvas').attr('height', $(this).val() + 'px')
+
+        }
     });
 });

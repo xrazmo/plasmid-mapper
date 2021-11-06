@@ -1,10 +1,10 @@
-#spinner {
+/* #spinner {
     display: none;
 }
 
 .busy {
     display: block !important;
-}
+} */
 
 .table td {
     vertical-align: middle!important;
@@ -15,10 +15,11 @@
     font-stretch: extra-condensed;
 }
 
-.tick line {
+
+/* .tick line {
     color: #c1caca;
     stroke-dasharray: 2px;
-}
+} */
 
 table {
     white-space: nowrap;
@@ -39,7 +40,13 @@ table {
     display: block;
 }
 
-.e-ring {
+.big-checkbox {
+    width: 20px;
+    height: 20px;
+}
+
+
+/* .e-ring {
     fill: #f0f0f099;
     stroke: #1d1c1c;
     stroke-width: 0.1;
@@ -50,12 +57,6 @@ table {
     fill: none;
 }
 
-.big-checkbox {
-    width: 20px;
-    height: 20px;
-}
-
-
 /* .alignbox:hover {
     fill: #6baed6;
     ;
@@ -64,6 +65,8 @@ table {
     cursor: pointer;
 } */
 
+
+/* 
 .m {
     stroke: #f32707;
     stroke-width: 0.2px;
@@ -141,3 +144,7 @@ table {
 .tick>line {
     stroke-dasharray: 1.2;
 }
+
+*/
+
+*/
