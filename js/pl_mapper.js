@@ -16,7 +16,7 @@ $(document).ready(function() {
     function update_page(qryId) {
         var size = 800;
         var radius = 260,
-            radiusStep = -20;
+            radiusStep = -5;
 
         controls = { 'radius': radius, 'radiusStep': radiusStep, "size": size };
         var svg = d3.select('#main-svg');
@@ -46,6 +46,8 @@ $(document).ready(function() {
             }
         });
         tabulate(data, columns);
+        plotLegend(qryId);
+
         $('.big-checkbox').change(function() {
             var id = $(this).attr('id');
             if (this.checked) {
@@ -58,7 +60,16 @@ $(document).ready(function() {
             }
 
         });
-        plotLegend(qryId);
+        $.each($('.big-checkbox'), function(i, chk) {
+            if (i < 40) {
+                $(chk).prop("checked", true);
+                $(chk).trigger('change');
+            }
+        });
+        $('#uptBtn').trigger('click');
+
+
+
         return controls;
 
     }
@@ -130,7 +141,7 @@ $(document).ready(function() {
 
     }
 
-    function plotBlastRings(data, radius) {
+    function plotBlastRings_withHeader(data, radius) {
         var qLen = data.qlen;
         var bl_focus = d3.select('#bl-focus');
         var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, qLen])
@@ -202,6 +213,53 @@ $(document).ready(function() {
             .style('font-size', '8px')
             .style('font-family', 'monospace')
             .style('font-weight', 'bold');
+
+    }
+
+    function plotBlastRings(data, radius, color_index) {
+        var qLen = data.qlen;
+        var bl_focus = d3.select('#bl-focus');
+        var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, qLen])
+        var arcW = 4,
+            panelW = 4,
+            p_inR = radius,
+            p_outR = radius + panelW,
+            innerR = p_inR + 2,
+            outterR = innerR + arcW;
+
+        var cl = Color_collection[color_index % Color_collection.length]
+
+        $.each(data.ranges, function(i, rng) {
+
+            bl_focus
+                .append('path')
+                .attr('class', 'sbj')
+                .attr('d', d3.arc()
+                    .innerRadius(innerR)
+                    .outerRadius(outterR)
+                    .startAngle(coord2Angle(rng.qstart))
+                    .endAngle(coord2Angle(rng.qend)))
+                .style('fill', cl + 'cc')
+                .style('stroke', '#ccc')
+                .style('stroke-width', 0.7)
+                //d => "#" + Math.floor(Math.random() * 16777215).toString(16)); '#c6dbef'
+            bl_focus.selectAll('.miss_line-' + i + '-' + outterR)
+                .data(rng.line_annot)
+                .enter()
+                .append('path')
+                .attr('class', d => 'miss_line-' + i + '-' + outterR + ' ' + d.t)
+                .attr('d', function(d) {
+
+                    var angle = coord2Angle(d.v) - half_pi;
+                    var x0 = innerR * Math.cos(angle),
+                        y0 = innerR * Math.sin(angle),
+                        x1 = outterR * Math.cos(angle),
+                        y1 = outterR * Math.sin(angle);
+                    return ["M", x0, y0, "L", x1, y1].join(' ')
+                }).style('stroke-width', 0.2)
+                .style('stroke', d => Mismatch_COLOR[d.t]);
+
+        });
 
     }
 
@@ -445,7 +503,6 @@ $(document).ready(function() {
         });
     }
 
-
     function getORFLables(innerRadius, outerRadius, startAngle, endAngle) {
 
 
@@ -631,9 +688,10 @@ $(document).ready(function() {
         selected_alignments = [];
         qryId = this.value;
         controls = update_page(qryId);
+
     });
 
-    $('#qryselect').val('p004KP_6').change();
+
 
     $('#uptBtn').on('click', function(event) {
         var focus = d3.select('#focus')
@@ -650,7 +708,7 @@ $(document).ready(function() {
             $.each(selected_alignments, function(i, key) {
                 ringNr += 1
                 exR += controls.radiusStep;
-                plotBlastRings(MAP_DATA[key], exR);
+                plotBlastRings(MAP_DATA[key], exR, i);
 
             });
 
@@ -672,9 +730,8 @@ $(document).ready(function() {
         var url = DOMURL.createObjectURL(svg);
         img.onload = function() {
             ctx.drawImage(img, 0, 0);
-            var png = canvas.toDataURL("image/png");
-            // document.querySelector('#png-container').innerHTML = '<img src="' + png + '"/>';
-            saveAs(png, qryId + ".png");
+            var png = canvas.toDataURL("image/tiff");
+            saveAs(png, qryId + ".tiff");
             DOMURL.revokeObjectURL(png);
         };
         img.src = url;
@@ -691,4 +748,6 @@ $(document).ready(function() {
 
         }
     });
+
+    $('#qryselect').val('p004KP_6').change();
 });
