@@ -167,11 +167,11 @@ $(document).ready(function() {
                     .endAngle(coord2Angle(rng.qend)))
                 .attr('fill', '#c6dbef')
                 //d => "#" + Math.floor(Math.random() * 16777215).toString(16));
-            bl_focus.selectAll('.miss_line-' + i)
+            bl_focus.selectAll('.miss_line-' + i + '-' + outterR)
                 .data(rng.line_annot)
                 .enter()
                 .append('path')
-                .attr('class', d => 'miss_line-' + i + ' ' + d.t)
+                .attr('class', d => 'miss_line-' + i + '-' + outterR + ' ' + d.t)
                 .attr('d', function(d) {
 
                     var angle = coord2Angle(d.v) - half_pi;
