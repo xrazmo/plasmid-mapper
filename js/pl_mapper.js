@@ -67,20 +67,20 @@ $(document).ready(function() {
         var legend = d3.select('#focus').append('g')
         var orf_labels = {
             'ARGs': { 'kl': 'args', 'coef': 1.5 },
-            'Insertion sequences': { 'kl': 'isel', 'coef': 3.9 },
-            "Transposons": { 'kl': "transposase", 'coef': 2.5 },
-            'Virulence factors': { 'kl': 'virulence', 'coef': 3.1 },
-            'Biocide and metal resistance': { 'kl': 'biocidemetal', 'coef': 5 },
+            'Insertion sequences': { 'kl': 'isel', 'coef': 4.1 },
+            "Transposons": { 'kl': "transposase", 'coef': 2.8 },
+            'Virulence factors': { 'kl': 'virulence', 'coef': 3.5 },
+            'Biocide and metal resistance': { 'kl': 'biocidemetal', 'coef': 5.8 },
             "Integron": { 'kl': "integrase", 'coef': 2 },
-            "Hypothetical proteins": { 'kl': 'hypothetical', 'coef': 4 },
-            "Other": { 'kl': "other", 'coef': 1 },
+            "Hypothetical proteins": { 'kl': 'hypothetical', 'coef': 4.5 },
+            "Other": { 'kl': "other", 'coef': 1.5 },
 
         }
         var lengendAngle = { "s082Km_2": -half_pi, "m481ECL_2": -half_pi }
         var radius = controls.radius,
             sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
             k = 0,
-            step = Math.PI / 60;
+            step = Math.PI / 50;
         var ta, tb, bias, sa, sb;
         var lgTxt = legend.append('text');
 
@@ -102,8 +102,8 @@ $(document).ready(function() {
             legend.append("path")
                 .attr('id', 'lgd-' + d.kl)
                 .attr("d", d3.arc()
-                    .innerRadius(radius + 28)
-                    .outerRadius(radius + 29)
+                    .innerRadius(radius + 27)
+                    .outerRadius(radius + 28)
                     .startAngle(ta)
                     .endAngle(tb))
                 .style('stroke', 'none').style('fill', 'none')
@@ -112,8 +112,9 @@ $(document).ready(function() {
                 .attr("xlink:href", "#lgd-" + d.kl)
                 .text(txt)
                 .attr("startOffset", "0%")
-                .style('font-size', '5px')
-                .style('font-weight', 700);
+                .style('font-size', '7px')
+                .style('font-weight', 600)
+                .style('font-family', 'tahoma');
             k += d.coef
         });
 
@@ -124,7 +125,7 @@ $(document).ready(function() {
                 .startAngle(sAngle - (half_pi / 90))
                 .endAngle(tb + (half_pi / 90)))
             .style('stroke', '#bdbdbd')
-            .style('fill', 'none')
+            .style('fill', '#cccccc2b')
             .style('stroke-width', '0.5');
 
     }
@@ -148,7 +149,10 @@ $(document).ready(function() {
                 .outerRadius(p_outR)
                 .startAngle(0)
                 .endAngle(2 * Math.PI))
-            .style('fill', ringNr % 2 == 0 ? "#f0f0f0" : "none");
+            .style('fill', ringNr % 2 == 0 ? "#f0f0f0" : "none")
+            .style('stroke', ringNr % 2 == 0 ? '#ccc' : 'none')
+            .style('stroke-width', 1)
+            .style("stroke-dasharray", ("5,4"));
 
 
         $.each(data.ranges, function(i, rng) {
@@ -176,7 +180,8 @@ $(document).ready(function() {
                         x1 = outterR * Math.cos(angle),
                         y1 = outterR * Math.sin(angle);
                     return ["M", x0, y0, "L", x1, y1].join(' ')
-                }).style('stroke-width', 0.2).style('stroke', d => Mismatch_COLOR[d.t]);
+                }).style('stroke-width', 0.2)
+                .style('stroke', d => Mismatch_COLOR[d.t]);
 
         });
 
@@ -194,8 +199,9 @@ $(document).ready(function() {
             .attr("xlink:href", "#hp" + data.sseqid)
             .text(data.stitle)
             .attr("startOffset", "0%")
-            .style('font-size', '6px');
-
+            .style('font-size', '8px')
+            .style('font-family', 'monospace')
+            .style('font-weight', 'bold');
 
     }
 
@@ -211,7 +217,7 @@ $(document).ready(function() {
             .domain(d3.range(0, qLen));
 
         var y = d3.scaleRadial()
-            .range([radius - 6, radius - 1]) // Domain will be define later.
+            .range([radius - 8, radius]) // Domain will be define later.
             .domain([0, 2]);
 
 
@@ -225,10 +231,12 @@ $(document).ready(function() {
             .attr("transform", function(d) { return "rotate(" + (x(d) * 180 / Math.PI - 90) + ")" + "translate(" + y(0) + ",0)"; })
             .style('stroke', '#000')
             .style('stroke-width', '0.2px')
-            .style('font-size', '5px').style('font-weight', 600);
+            .style('font-size', '7px')
+            .style('font-weight', 600)
+            .style('font-family', 'sans-serif');
 
         xAxis.append('line')
-            .attr("x1", 8);
+            .attr("x2", 8);
 
         xAxis.attr("stroke", "#bdbdbd")
             .append("text")
@@ -366,20 +374,21 @@ $(document).ready(function() {
                     .attr('x', x)
                     .attr('y', y)
                     .attr('transform', 'rotate(0,' + x + ',' + y + ')')
-                    .style("font-size", "6px")
-                    .style('font-weight', 600).style('font-style', 'italic')
+                    .style("font-size", "8px")
+                    .style('font-weight', 600)
+                    .style('font-family', 'Helvetica')
                     .text(d.dscr.replace('family transposase', ''))
                     .on("mousedown", function(event) {
                         event.preventDefault();
 
                         this.style.cursor = "grabbing";
                         touched = true;
-                        d3.select(this).style('font-size', '0.7rem');
+                        d3.select(this).style('font-size', '10px');
                     })
                     .on('mouseleave mouseup', function(event) {
                         touched = false; // signals mouse up for (D) and (E)
                         this.style.cursor = "grab";
-                        d3.select(this).style('font-size', '6px');
+                        d3.select(this).style('font-size', '8px');
 
                     })
                     .on("mousemove", function(event) {
@@ -620,7 +629,6 @@ $(document).ready(function() {
         d3.select("#main-svg").selectAll('*').remove();
         d3.select("#tbl-main").selectAll('*').remove();
         selected_alignments = [];
-        fill_link("saveLink", '');
         qryId = this.value;
         controls = update_page(qryId);
     });
@@ -628,7 +636,6 @@ $(document).ready(function() {
     $('#qryselect').val('p004KP_6').change();
 
     $('#uptBtn').on('click', function(event) {
-        fill_link("saveLink", '');
         var focus = d3.select('#focus')
         focus.selectAll('.blast-focus').remove();
         focus.append('g')
@@ -637,7 +644,7 @@ $(document).ready(function() {
 
         if (selected_alignments.length > 0) {
 
-            var exR = controls.radius;
+            var exR = controls.radius - 10
             ringNr = 0
 
             $.each(selected_alignments, function(i, key) {
