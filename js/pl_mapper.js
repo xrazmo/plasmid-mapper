@@ -31,7 +31,7 @@ $(document).ready(function() {
 
         var data = [];
         plotPlasmid(Contig_ref[qryId], radius);
-        var columns = ["#", "select", "qcov", "sseqid", "stitle"]
+        var columns = ["#", "select", "qcov", "sseqid", "stitle", 'qseqid']
 
         $.each(MAP_DATA, function(key, d) {
 
@@ -61,7 +61,7 @@ $(document).ready(function() {
 
         });
         $.each($('.big-checkbox'), function(i, chk) {
-            if (i < 40) {
+            if (i < 10) {
                 $(chk).prop("checked", true);
                 $(chk).trigger('change');
             }
@@ -75,6 +75,8 @@ $(document).ready(function() {
     }
 
     function plotLegend(qryId) {
+        var deg = Math.PI / 180,
+            pi2 = 2 * Math.PI;
         var legend = d3.select('#focus').append('g')
         var orf_labels = {
             'ARGs': { 'kl': 'args', 'coef': 1.5 },
@@ -87,25 +89,53 @@ $(document).ready(function() {
             "Other": { 'kl': "other", 'coef': 1.5 },
 
         }
-        var lengendAngle = { "s082Km_2": -half_pi, "m481ECL_2": -half_pi }
+        var lengendAngle = {
+            "p004KP_6": 65 * deg,
+            "p165E_3": 115 * deg,
+            "s082Km_2": -80 * deg,
+            "s164ECL_2": 140 * deg,
+            "s257ECL_2": -125 * deg,
+            "s304ECL_3": 40 * deg,
+            "m481ECL_2": 140 * deg,
+            "s202ECL_2": 140 * deg,
+        }
+
+
         var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
+            sAngle = lengendAngle[qryId],
             k = 0,
-            step = Math.PI / 50;
+            step = Math.PI / 65;
         var ta, tb, bias, sa, sb;
+
         var lgTxt = legend.append('text');
 
+        var tmp = (sAngle + pi2) % pi2;
+        var revert = tmp > half_pi && tmp < 2.5 * half_pi ? true : false;
 
         $.each(orf_labels, function(txt, d) {
+
 
             ta = sAngle + (k * step),
                 tb = sAngle + (k + d.coef) * step,
                 bias = (tb - step - ta) / 2
-            sa = ta + bias,
-                sb = sa + step;
+            sa = ta + bias;
+            sb = sa + step;
+
+
+            var pR1 = revert ? radius + 20 : radius + 27,
+                pR2 = revert ? radius + 21 : radius + 28,
+                oR1 = revert ? radius + 23 : radius + 20,
+                oR2 = revert ? radius + 28 : radius + 25;
+            if (revert) {
+                tmp = ta;
+                ta = tb;
+                tb = tmp;
+            }
+
+
             legend.append("path")
                 .attr('class', "orf " + d.kl)
-                .attr("d", getArrowedArc(radius + 20, radius + 25, sa, sb, true))
+                .attr("d", getArrowedArc(oR1, oR2, sa, sb, true))
                 .style('fill', ORF_COLOR[d.kl])
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
@@ -113,8 +143,8 @@ $(document).ready(function() {
             legend.append("path")
                 .attr('id', 'lgd-' + d.kl)
                 .attr("d", d3.arc()
-                    .innerRadius(radius + 27)
-                    .outerRadius(radius + 28)
+                    .innerRadius(pR1)
+                    .outerRadius(pR2)
                     .startAngle(ta)
                     .endAngle(tb))
                 .style('stroke', 'none').style('fill', 'none')
@@ -123,18 +153,111 @@ $(document).ready(function() {
                 .attr("xlink:href", "#lgd-" + d.kl)
                 .text(txt)
                 .attr("startOffset", "0%")
-                .style('font-size', '7px')
+                .style('font-size', '5px')
                 .style('font-weight', 600)
                 .style('font-family', 'tahoma');
             k += d.coef
         });
 
+
         legend.append("path")
             .attr("d", d3.arc()
                 .innerRadius(radius + 15)
                 .outerRadius(radius + 35)
-                .startAngle(sAngle - (half_pi / 90))
-                .endAngle(tb + (half_pi / 90)))
+                .startAngle(sAngle - deg)
+                .endAngle(Math.max(tb, ta) + deg))
+            .style('stroke', '#bdbdbd')
+            .style('fill', '#cccccc2b')
+            .style('stroke-width', '0.5');
+
+    }
+
+    function plotBlastLegend(qryId) {
+        var deg = Math.PI / 180,
+            pi2 = 2 * Math.PI;
+
+        var legend = d3.select('#focus').append('g')
+        var lengendAngle = {
+            "p004KP_6": -120 * deg,
+            "p165E_3": -70 * deg,
+            "s082Km_2": 95 * deg,
+            "s164ECL_2": -45 * deg,
+            "s257ECL_2": -45 * deg,
+            "m481ECL_2": 220 * deg,
+            "s202ECL_2": -45 * deg,
+            "s304ECL_3": 210 * deg,
+        }
+        var radius = controls.radius,
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
+            k = 0,
+            step = 4.5 * Math.PI / 180;
+        var ta, tb, bias, sa, sb;
+        var lgTxt = legend.append('text');
+        var r1 = radius + 18,
+            r2 = radius + 28,
+            r, coef = 2;
+
+        var tmp = (sAngle + pi2) % pi2;
+        var revert = tmp > 0.5 * half_pi && tmp < 2.5 * half_pi ? true : false;
+        $.each(selected_alignments, function(i, key) {
+
+            r = i % 2 == 1 ? r1 : r2;
+
+            var tR1 = revert ? r + -1 : r - 1,
+                tR2 = revert ? r + 3 : r + 3,
+                pR1 = revert ? r + 4 : r - 1,
+                pR2 = revert ? r + 7.5 : r + 2;
+
+
+            if (i % 2 == 0) {
+                ta = sAngle + (k * step),
+                    tb = sAngle + (k + coef) * step,
+                    bias = (tb - step - ta) / 2
+                sa = ta + bias;
+                sb = sa + step;
+                if (revert) {
+                    tmp = ta;
+                    ta = tb;
+                    tb = tmp;
+                }
+
+            }
+            legend.append("path")
+                .attr("d", d3.arc()
+                    .innerRadius(pR1)
+                    .outerRadius(pR2)
+                    .startAngle(sa)
+                    .endAngle(sb))
+                .style('stroke', '#ccc')
+                .style('stroke-width', 0.5)
+                .style('fill', Color_collection[i])
+
+            legend.append("path")
+                .attr('id', 'lgdB-' + key)
+                .attr("d", d3.arc()
+                    .innerRadius(tR1)
+                    .outerRadius(tR2)
+                    .startAngle(ta)
+                    .endAngle(tb))
+                .style('stroke', 'none')
+                .style('fill', 'none');
+
+            lgTxt.append("textPath")
+                .attr("xlink:href", "#lgdB-" + key)
+                .text(key.split('$')[1])
+                .attr("startOffset", "0%")
+                .style('font-size', '5px')
+                .style('font-weight', 600)
+                .style('font-family', 'tahoma');
+            k += 1
+        });
+
+        legend.append("path")
+            .attr("d", d3.arc()
+                .innerRadius(radius + 15)
+                .outerRadius(radius + 37)
+                .startAngle(sAngle - deg)
+                .endAngle(Math.max(ta, tb) + deg))
             .style('stroke', '#bdbdbd')
             .style('fill', '#cccccc2b')
             .style('stroke-width', '0.5');
@@ -712,6 +835,8 @@ $(document).ready(function() {
 
             });
 
+            plotBlastLegend(qryId);
+
         }
 
     });
@@ -749,5 +874,5 @@ $(document).ready(function() {
         }
     });
 
-    $('#qryselect').val('p004KP_6').change();
+    $('#qryselect').val('s082Km_2').change();
 });
