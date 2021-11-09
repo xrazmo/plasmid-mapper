@@ -61,15 +61,12 @@ $(document).ready(function() {
 
         });
         $.each($('.big-checkbox'), function(i, chk) {
-            if (i < 10) {
+            if (i < 40) {
                 $(chk).prop("checked", true);
                 $(chk).trigger('change');
             }
         });
         $('#uptBtn').trigger('click');
-
-
-
         return controls;
 
     }
@@ -104,7 +101,7 @@ $(document).ready(function() {
         var radius = controls.radius,
             sAngle = lengendAngle[qryId],
             k = 0,
-            step = Math.PI / 65;
+            step = 2.7 * deg;
         var ta, tb, bias, sa, sb;
 
         var lgTxt = legend.append('text');
@@ -468,7 +465,7 @@ $(document).ready(function() {
                     .endAngle(coord2Angle(d.eidx))
                 ).style('fill', 'none')
                 .style('stroke', sColor)
-                .style('stroke-width', '0.5')
+                .style('stroke-width', 1)
                 .style("stroke-dasharray", ("2,1"));
 
             // #------------------
@@ -495,13 +492,14 @@ $(document).ready(function() {
                 .attr("class", "taxis")
                 .attr("transform", function(d) { return "rotate(" + (tx(d) * 180 / Math.PI - 90) + ")" + "translate(" + ty(2) + ",0)"; });
             ticks.append('line')
-                .attr("x2", -2).style('stroke', sColor).style('stroke-width', 0.5);
+                .attr("x2", -2).style('stroke', sColor)
+                .style('stroke-width', 0.5);
 
             txAxis.append("path")
                 .attr("d", getUnaligned_deletion(recR[1], secondRadius, coord2Angle(d.sidx + (qryLen / 2)), coord2Angle(arcSidx), coord2Angle(arcEidx)))
                 .style('stroke', sColor)
                 .style("stroke-dasharray", ("1,1"))
-                .style('stroke-width', '0.5')
+                .style('stroke-width', 1)
                 .attr('fill', 'none');
 
         });
@@ -528,11 +526,17 @@ $(document).ready(function() {
             if (isAnn) {
                 qryfocus.append("path")
                     .attr('class', "orf " + d.type)
+                    .attr('id', 'orf-' + d.id)
                     .attr("d", getArrowedArc(secondRadius + 2, secondRadius + 8, tcoord2Angle(d.sidx),
                         tcoord2Angle(d.eidx), d.strand == 1))
                     .style('fill', ORF_COLOR[d.type])
                     .style('stroke', '#737373')
-                    .style('stroke-width', 0.3);
+                    .style('stroke-width', 0.3).on('click', function(event) {
+                        var orfid = d3.select(this).attr('id').split('-')[1];
+                        var curStat = d3.select('#line-' + orfid).attr('display')
+                        d3.select('#line-' + orfid).attr('display', curStat == 'none' ? 'block' : 'none');
+                        d3.select('#txt-' + orfid).attr('display', curStat == 'none' ? 'block' : 'none');
+                    });
             }
             if (d.type == 'hypothetical') return;
 
@@ -551,7 +555,9 @@ $(document).ready(function() {
                 var midPoint = d.sidx + Math.abs(d.sidx - d.eidx),
                     x = (secondRadius + 18) * Math.cos(tcoord2Angle(midPoint) - half_pi),
                     y = (secondRadius + 18) * Math.sin(tcoord2Angle(midPoint) - half_pi);
-                textg.append('g').append('text')
+                textg.append('g')
+                    .append('text')
+                    .attr('id', 'txt-' + d.id)
                     .attr('x', x)
                     .attr('y', y)
                     .attr('transform', 'rotate(0,' + x + ',' + y + ')')
