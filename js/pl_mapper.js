@@ -147,46 +147,51 @@ $(document).ready(function() {
         });
     }
 
-    // Makes a curved (arc-following) legend <g> draggable AROUND THE RING
-    // only -- angle, not free x/y -- since the legend's whole visual
-    // identity is "text following the ring at a fixed radius" and letting
-    // it drift off that ring would look wrong. Persists just the rotation
-    // angle (degrees) via PlasmidMapperEdits, applied as a
-    // rotate(...) transform around #focus's origin (the ring's center),
-    // which slides every arc/textPath child to a new angular position
-    // without changing their radius or internal geometry at all.
+    // Makes a curved (arc-following) legend draggable AROUND THE RING only
+    // -- angle, not free x/y -- since the legend's whole visual identity
+    // is text following the ring at a fixed radius, and letting it drift
+    // off that ring would look wrong. Persists the angle (radians) via
+    // PlasmidMapperEdits.
+    //
+    // Unlike a simple rotate() transform on pre-built content, this calls
+    // back into `drawAt(angle)` (the same function used for the initial
+    // render) on every drag tick to fully rebuild the legend's geometry
+    // at the live angle -- required because `drawAt` internally decides
+    // whether to flip the text/swatch radii ("revert") so text reads
+    // right-side-up, and that decision depends on which half of the
+    // circle the angle falls in. A rotate()-only transform bakes that
+    // decision in once at the pre-drag angle, so dragging into the
+    // opposite hemisphere left the text upside-down (confirmed bug) --
+    // recomputing via drawAt() on every tick keeps it correctly oriented
+    // throughout the drag, not just after it settles.
     //
     // The grabbed point (e.g. one specific category's swatch) is generally
-    // NOT at the legend's own angle-0 origin -- it's offset by wherever
-    // that category falls in the arc -- so the rotation must track the
-    // CHANGE in pointer angle from drag-start, added to whatever rotation
-    // the legend already had, not the pointer's absolute angle each tick
-    // (which would snap/jump the legend to align its origin with the
-    // cursor on the very first tick, same class of bug as a naive
-    // absolute-position free-drag).
-    function makeLegendDraggable(legend, qryId, legendKey) {
-        var saved = PlasmidMapperEdits.getLegendPosition(qryId, legendKey);
-        var currentAngleDeg = saved && typeof saved.angleDeg === 'number' ? saved.angleDeg : 0;
-        var rotationAtDragStart, pointerAngleAtDragStart;
+    // NOT at the legend's angle-0 origin -- it's offset by wherever that
+    // category falls in the arc -- so the angle must track the CHANGE in
+    // pointer angle from drag-start, added to the angle the legend already
+    // had, not the pointer's absolute angle each tick (which would
+    // snap/jump the legend's origin to the cursor on the very first tick).
+    function makeLegendDraggable(legend, qryId, legendKey, initialAngle, drawAt) {
+        var currentAngle = initialAngle;
+        var angleAtDragStart, pointerAngleAtDragStart;
 
-        legend.attr('transform', 'rotate(' + currentAngleDeg + ')')
-            .style('cursor', 'grab');
+        legend.style('cursor', 'grab');
 
         legend.call(d3.drag()
             .container(d3.select('#focus').node())
             .on('start', function(event) {
                 this.style.cursor = 'grabbing';
-                rotationAtDragStart = currentAngleDeg;
-                pointerAngleAtDragStart = Math.atan2(event.y, event.x) * 180 / Math.PI;
+                angleAtDragStart = currentAngle;
+                pointerAngleAtDragStart = Math.atan2(event.y, event.x);
             })
             .on('drag', function(event) {
-                var pointerAngleNow = Math.atan2(event.y, event.x) * 180 / Math.PI;
-                currentAngleDeg = rotationAtDragStart + (pointerAngleNow - pointerAngleAtDragStart);
-                d3.select(this).attr('transform', 'rotate(' + currentAngleDeg + ')');
+                var pointerAngleNow = Math.atan2(event.y, event.x);
+                currentAngle = angleAtDragStart + (pointerAngleNow - pointerAngleAtDragStart);
+                drawAt(currentAngle);
             })
             .on('end', function(event) {
                 this.style.cursor = 'grab';
-                PlasmidMapperEdits.setLegendPosition(qryId, legendKey, null, null, currentAngleDeg);
+                PlasmidMapperEdits.setLegendPosition(qryId, legendKey, null, null, currentAngle * 180 / Math.PI);
             }));
     }
 
@@ -273,7 +278,6 @@ $(document).ready(function() {
 
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
-        var legend = d3.select('#focus').append('g')
         var orf_labels = {
             'ARGs': { 'kl': 'args', 'coef': 1.5 },
             'Insertion sequences': { 'kl': 'isel', 'coef': 4.1 },
@@ -303,6 +307,8 @@ $(document).ready(function() {
         var totalCoef = 0;
         $.each(orf_labels, function(txt, d) { totalCoef += d.coef; });
         var requiredArcWidth = totalCoef * (2.7 * deg);
+        var step = 2.7 * deg;
+        var radius = controls.radius;
 
         // Default (for a plasmid ID not in the hand-curated lengendAngle
         // map above): avoid both any user-added zoom band (data.annotations)
@@ -313,81 +319,98 @@ $(document).ready(function() {
         // under a legend's fixed position made both unreadable together).
         var coord2Angle = d3.scaleLinear().range([0, pi2]).domain([0, data.qlen]);
         var occupiedRanges = annotationOccupiedRanges(data, coord2Angle);
-        var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth),
-            k = 0,
-            step = 2.7 * deg;
-        var ta, tb, bias, sa, sb;
+        var autoAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth);
 
-        // Stash this legend's occupied window so plotBlastLegend (called
-        // later, from a different handler once BLAST rings are selected)
-        // can avoid it too.
-        controls.orfLegendOccupied = { start: sAngle, end: sAngle + requiredArcWidth };
+        // Draws (or redraws, clearing first) all of this legend's content
+        // AT A GIVEN ANGLE -- factored out so a drag can call this
+        // directly with the live pointer angle on every tick, instead of
+        // building geometry once and rotating the whole group as a
+        // transform. That matters specifically because of `revert` below:
+        // it decides whether text/swatch radii need to flip so the text
+        // reads right-side-up, and that decision depends on which half of
+        // the circle sAngle falls in -- a decision baked in once at build
+        // time goes stale the moment a transform-only drag moves the
+        // group into the opposite hemisphere (confirmed: this is exactly
+        // what caused upside-down legend text when dragged to the bottom).
+        // Recomputing revert from the CURRENT angle on every redraw keeps
+        // the text correctly oriented throughout the drag, not just after
+        // it settles.
+        function drawAt(sAngle) {
+            legend.selectAll('*').remove();
 
-        var lgTxt = legend.append('text');
+            // Stash this legend's occupied window so plotBlastLegend
+            // (called later, from a different handler once BLAST rings
+            // are selected) can avoid it too. Only meaningful/updated
+            // while this is the auto-placed (non-dragged) angle; see the
+            // dragEndAngle handling below.
+            controls.orfLegendOccupied = { start: sAngle, end: sAngle + requiredArcWidth };
 
-        var tmp = (sAngle + pi2) % pi2;
-        var revert = tmp > half_pi && tmp < 2.5 * half_pi ? true : false;
+            var lgTxt = legend.append('text');
+            var k = 0, ta, tb, bias, sa, sb;
 
-        $.each(orf_labels, function(txt, d) {
+            var tmp = (sAngle + pi2) % pi2;
+            var revert = tmp > half_pi && tmp < 2.5 * half_pi ? true : false;
 
+            $.each(orf_labels, function(txt, d) {
 
-            ta = sAngle + (k * step),
-                tb = sAngle + (k + d.coef) * step,
-                bias = (tb - step - ta) / 2
-            sa = ta + bias;
-            sb = sa + step;
+                ta = sAngle + (k * step),
+                    tb = sAngle + (k + d.coef) * step,
+                    bias = (tb - step - ta) / 2
+                sa = ta + bias;
+                sb = sa + step;
 
+                var pR1 = revert ? radius + 20 : radius + 27,
+                    pR2 = revert ? radius + 21 : radius + 28,
+                    oR1 = revert ? radius + 23 : radius + 20,
+                    oR2 = revert ? radius + 28 : radius + 25;
+                if (revert) {
+                    tmp = ta;
+                    ta = tb;
+                    tb = tmp;
+                }
 
-            var pR1 = revert ? radius + 20 : radius + 27,
-                pR2 = revert ? radius + 21 : radius + 28,
-                oR1 = revert ? radius + 23 : radius + 20,
-                oR2 = revert ? radius + 28 : radius + 25;
-            if (revert) {
-                tmp = ta;
-                ta = tb;
-                tb = tmp;
-            }
+                legend.append("path")
+                    .attr('class', "orf " + d.kl)
+                    .attr("d", getArrowedArc(oR1, oR2, sa, sb, true))
+                    .style('fill', ORF_COLOR[d.kl])
+                    .style('stroke', '#737373')
+                    .style('stroke-width', 0.3);
 
+                legend.append("path")
+                    .attr('id', 'lgd-' + d.kl)
+                    .attr("d", d3.arc()
+                        .innerRadius(pR1)
+                        .outerRadius(pR2)
+                        .startAngle(ta)
+                        .endAngle(tb))
+                    .style('stroke', 'none').style('fill', 'none')
+
+                lgTxt.append("textPath")
+                    .attr("xlink:href", "#lgd-" + d.kl)
+                    .text(txt)
+                    .attr("startOffset", "0%")
+                    .style('font-size', '5px')
+                    .style('font-weight', 600)
+                    .style('font-family', 'tahoma');
+                k += d.coef
+            });
 
             legend.append("path")
-                .attr('class', "orf " + d.kl)
-                .attr("d", getArrowedArc(oR1, oR2, sa, sb, true))
-                .style('fill', ORF_COLOR[d.kl])
-                .style('stroke', '#737373')
-                .style('stroke-width', 0.3);
-
-            legend.append("path")
-                .attr('id', 'lgd-' + d.kl)
                 .attr("d", d3.arc()
-                    .innerRadius(pR1)
-                    .outerRadius(pR2)
-                    .startAngle(ta)
-                    .endAngle(tb))
-                .style('stroke', 'none').style('fill', 'none')
+                    .innerRadius(radius + 15)
+                    .outerRadius(radius + 37)
+                    .startAngle(sAngle - deg)
+                    .endAngle(Math.max(tb, ta) + deg))
+                .style('stroke', '#bdbdbd')
+                .style('fill', '#cccccc2b')
+                .style('stroke-width', '0.5');
+        }
 
-            lgTxt.append("textPath")
-                .attr("xlink:href", "#lgd-" + d.kl)
-                .text(txt)
-                .attr("startOffset", "0%")
-                .style('font-size', '5px')
-                .style('font-weight', 600)
-                .style('font-family', 'tahoma');
-            k += d.coef
-        });
-
-
-        legend.append("path")
-            .attr("d", d3.arc()
-                .innerRadius(radius + 15)
-                .outerRadius(radius + 37)
-                .startAngle(sAngle - deg)
-                .endAngle(Math.max(tb, ta) + deg))
-            .style('stroke', '#bdbdbd')
-            .style('fill', '#cccccc2b')
-            .style('stroke-width', '0.5');
-
-        makeLegendDraggable(legend, qryId, ORF_LEGEND_KEY);
+        var legend = d3.select('#focus').append('g');
+        var saved = PlasmidMapperEdits.getLegendPosition(qryId, ORF_LEGEND_KEY);
+        var initialAngle = saved && typeof saved.angleDeg === 'number' ? saved.angleDeg * deg : autoAngle;
+        drawAt(initialAngle);
+        makeLegendDraggable(legend, qryId, ORF_LEGEND_KEY, initialAngle, drawAt);
 
     }
 
@@ -409,7 +432,6 @@ $(document).ready(function() {
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
 
-        var legend = d3.select('#focus').append('g')
         var lengendAngle = {
             "p004KP_6": -120 * deg,
             "p165E_3": -70 * deg,
@@ -421,6 +443,10 @@ $(document).ready(function() {
             "s304ECL_3": 210 * deg,
         }
         var coefLocal = 2, stepLocal = 4.5 * deg;
+        var step = 4.5 * Math.PI / 180;
+        var radius = controls.radius;
+        var r1 = radius + 18, r2 = radius + 28, coef = 2;
+
         // This legend's arc width varies with how many BLAST-subject rings
         // are checked (a text arc is shared per pair of rings) -- computed
         // from the real selection count rather than assumed fixed.
@@ -433,82 +459,90 @@ $(document).ready(function() {
         var coord2Angle = d3.scaleLinear().range([0, pi2]).domain([0, data.qlen]);
         var occupiedRanges = annotationOccupiedRanges(data, coord2Angle);
         if (controls.orfLegendOccupied) occupiedRanges.push(controls.orfLegendOccupied);
-        var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth),
-            k = 0,
-            step = 4.5 * Math.PI / 180;
-        var ta, tb, bias, sa, sb;
-        var lgTxt = legend.append('text');
-        var r1 = radius + 18,
-            r2 = radius + 28,
-            r, coef = 2;
+        var autoAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth);
 
-        var tmp = (sAngle + pi2) % pi2;
-        var revert = tmp > 0.5 * half_pi && tmp < 2 * half_pi ? true : false;
-        $.each(selected_alignments, function(i, key) {
+        // See the matching comment in plotLegend()'s drawAt(): factored out
+        // so a drag can rebuild geometry (including the text-orientation
+        // "revert" decision) at the live angle on every tick, instead of
+        // baking that decision in once and rotating pre-built content --
+        // which left text upside-down when dragged into the opposite
+        // hemisphere.
+        function drawAt(sAngle) {
+            legend.selectAll('*').remove();
 
-            r = i % 2 == 1 ? r1 : r2;
+            var k = 0, ta, tb, bias, sa, sb, r;
+            var lgTxt = legend.append('text');
 
-            var tR1 = revert ? r + -1 : r - 1,
-                tR2 = revert ? r + 3 : r + 3,
-                pR1 = revert ? r + 4 : r - 1,
-                pR2 = revert ? r + 7.5 : r + 2;
+            var tmp = (sAngle + pi2) % pi2;
+            var revert = tmp > 0.5 * half_pi && tmp < 2 * half_pi ? true : false;
+            $.each(selected_alignments, function(i, key) {
 
+                r = i % 2 == 1 ? r1 : r2;
 
-            if (i % 2 == 0) {
-                ta = sAngle + (k * step),
-                    tb = sAngle + (k + coef) * step,
-                    bias = (tb - step - ta) / 2
-                sa = ta + bias;
-                sb = sa + step;
-                if (revert) {
-                    tmp = ta;
-                    ta = tb;
-                    tb = tmp;
+                var tR1 = revert ? r + -1 : r - 1,
+                    tR2 = revert ? r + 3 : r + 3,
+                    pR1 = revert ? r + 4 : r - 1,
+                    pR2 = revert ? r + 7.5 : r + 2;
+
+                if (i % 2 == 0) {
+                    ta = sAngle + (k * step),
+                        tb = sAngle + (k + coef) * step,
+                        bias = (tb - step - ta) / 2
+                    sa = ta + bias;
+                    sb = sa + step;
+                    if (revert) {
+                        tmp = ta;
+                        ta = tb;
+                        tb = tmp;
+                    }
+
                 }
+                legend.append("path")
+                    .attr("d", d3.arc()
+                        .innerRadius(pR1)
+                        .outerRadius(pR2)
+                        .startAngle(sa)
+                        .endAngle(sb))
+                    .style('stroke', '#ccc')
+                    .style('stroke-width', 0.5)
+                    .style('fill', Color_collection[i])
 
-            }
+                legend.append("path")
+                    .attr('id', 'lgdB-' + key)
+                    .attr("d", d3.arc()
+                        .innerRadius(tR1)
+                        .outerRadius(tR2)
+                        .startAngle(ta)
+                        .endAngle(tb))
+                    .style('stroke', 'none')
+                    .style('fill', 'none');
+
+                lgTxt.append("textPath")
+                    .attr("xlink:href", "#lgdB-" + key)
+                    .text(key.split('$')[1])
+                    .attr("startOffset", "0%")
+                    .style('font-size', '5px')
+                    .style('font-weight', 600)
+                    .style('font-family', 'tahoma');
+                k += 1
+            });
+
             legend.append("path")
                 .attr("d", d3.arc()
-                    .innerRadius(pR1)
-                    .outerRadius(pR2)
-                    .startAngle(sa)
-                    .endAngle(sb))
-                .style('stroke', '#ccc')
-                .style('stroke-width', 0.5)
-                .style('fill', Color_collection[i])
+                    .innerRadius(radius + 15)
+                    .outerRadius(radius + 37)
+                    .startAngle(sAngle - deg)
+                    .endAngle(Math.max(ta, tb) + deg))
+                .style('stroke', '#bdbdbd')
+                .style('fill', '#cccccc2b')
+                .style('stroke-width', '0.5');
+        }
 
-            legend.append("path")
-                .attr('id', 'lgdB-' + key)
-                .attr("d", d3.arc()
-                    .innerRadius(tR1)
-                    .outerRadius(tR2)
-                    .startAngle(ta)
-                    .endAngle(tb))
-                .style('stroke', 'none')
-                .style('fill', 'none');
-
-            lgTxt.append("textPath")
-                .attr("xlink:href", "#lgdB-" + key)
-                .text(key.split('$')[1])
-                .attr("startOffset", "0%")
-                .style('font-size', '5px')
-                .style('font-weight', 600)
-                .style('font-family', 'tahoma');
-            k += 1
-        });
-
-        legend.append("path")
-            .attr("d", d3.arc()
-                .innerRadius(radius + 15)
-                .outerRadius(radius + 37)
-                .startAngle(sAngle - deg)
-                .endAngle(Math.max(ta, tb) + deg))
-            .style('stroke', '#bdbdbd')
-            .style('fill', '#cccccc2b')
-            .style('stroke-width', '0.5');
-
-        makeLegendDraggable(legend, qryId, BLAST_LEGEND_KEY);
+        var legend = d3.select('#focus').append('g');
+        var saved = PlasmidMapperEdits.getLegendPosition(qryId, BLAST_LEGEND_KEY);
+        var initialAngle = saved && typeof saved.angleDeg === 'number' ? saved.angleDeg * deg : autoAngle;
+        drawAt(initialAngle);
+        makeLegendDraggable(legend, qryId, BLAST_LEGEND_KEY, initialAngle, drawAt);
 
     }
 
