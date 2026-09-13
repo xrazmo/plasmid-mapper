@@ -160,7 +160,7 @@ $(document).ready(function() {
         legend.append("path")
             .attr("d", d3.arc()
                 .innerRadius(radius + 15)
-                .outerRadius(radius + 35)
+                .outerRadius(radius + 37)
                 .startAngle(sAngle - deg)
                 .endAngle(Math.max(tb, ta) + deg))
             .style('stroke', '#bdbdbd')
@@ -195,7 +195,7 @@ $(document).ready(function() {
             r, coef = 2;
 
         var tmp = (sAngle + pi2) % pi2;
-        var revert = tmp > 0.5 * half_pi && tmp < 2.5 * half_pi ? true : false;
+        var revert = tmp > 0.5 * half_pi && tmp < 2 * half_pi ? true : false;
         $.each(selected_alignments, function(i, key) {
 
             r = i % 2 == 1 ? r1 : r2;
@@ -810,10 +810,16 @@ $(document).ready(function() {
         return new_str;
     }
 
+    function clear_canvas() {
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
     $("#qryselect").on('change', function() {
         d3.select("#main-svg").selectAll('*').remove();
         d3.select("#tbl-main").selectAll('*').remove();
+        clear_canvas();
         selected_alignments = [];
         qryId = this.value;
         controls = update_page(qryId);
@@ -850,9 +856,8 @@ $(document).ready(function() {
 
     $('#genBtn').on('click', function(event) {
         // saveSVG("main-svg", "saveLink");
-
+        clear_canvas();
         var svgString = new XMLSerializer().serializeToString(document.querySelector('svg'));
-
         var canvas = document.getElementById("canvas");
         var ctx = canvas.getContext("2d");
         var DOMURL = self.URL || self.webkitURL || self;
