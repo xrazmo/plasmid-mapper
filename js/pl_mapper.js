@@ -12,9 +12,16 @@ $(document).ready(function() {
     var renderSettings = {
         radius: 260,
         radiusStep: -5,
-        ringThickness: 4
+        ringThickness: 4,
+        orfLegendStyle: 'curved', // 'curved' | 'rect'
+        blastLegendStyle: 'curved'
     };
     window.PlasmidMapperSettings = renderSettings;
+    // Shared string keys for PlasmidMapperEdits.setLegendPosition/
+    // getLegendPosition, defined once to avoid typo drift between
+    // plotLegend's and plotBlastLegend's call sites.
+    var ORF_LEGEND_KEY = 'orfLegend';
+    var BLAST_LEGEND_KEY = 'blastLegend';
     initForm()
 
     function initForm() {
@@ -140,7 +147,130 @@ $(document).ready(function() {
         });
     }
 
+    // Makes a curved (arc-following) legend <g> draggable AROUND THE RING
+    // only -- angle, not free x/y -- since the legend's whole visual
+    // identity is "text following the ring at a fixed radius" and letting
+    // it drift off that ring would look wrong. Persists just the rotation
+    // angle (degrees) via PlasmidMapperEdits, applied as a
+    // rotate(...) transform around #focus's origin (the ring's center),
+    // which slides every arc/textPath child to a new angular position
+    // without changing their radius or internal geometry at all.
+    //
+    // The grabbed point (e.g. one specific category's swatch) is generally
+    // NOT at the legend's own angle-0 origin -- it's offset by wherever
+    // that category falls in the arc -- so the rotation must track the
+    // CHANGE in pointer angle from drag-start, added to whatever rotation
+    // the legend already had, not the pointer's absolute angle each tick
+    // (which would snap/jump the legend to align its origin with the
+    // cursor on the very first tick, same class of bug as a naive
+    // absolute-position free-drag).
+    function makeLegendDraggable(legend, qryId, legendKey) {
+        var saved = PlasmidMapperEdits.getLegendPosition(qryId, legendKey);
+        var currentAngleDeg = saved && typeof saved.angleDeg === 'number' ? saved.angleDeg : 0;
+        var rotationAtDragStart, pointerAngleAtDragStart;
+
+        legend.attr('transform', 'rotate(' + currentAngleDeg + ')')
+            .style('cursor', 'grab');
+
+        legend.call(d3.drag()
+            .container(d3.select('#focus').node())
+            .on('start', function(event) {
+                this.style.cursor = 'grabbing';
+                rotationAtDragStart = currentAngleDeg;
+                pointerAngleAtDragStart = Math.atan2(event.y, event.x) * 180 / Math.PI;
+            })
+            .on('drag', function(event) {
+                var pointerAngleNow = Math.atan2(event.y, event.x) * 180 / Math.PI;
+                currentAngleDeg = rotationAtDragStart + (pointerAngleNow - pointerAngleAtDragStart);
+                d3.select(this).attr('transform', 'rotate(' + currentAngleDeg + ')');
+            })
+            .on('end', function(event) {
+                this.style.cursor = 'grab';
+                PlasmidMapperEdits.setLegendPosition(qryId, legendKey, null, null, currentAngleDeg);
+            }));
+    }
+
+    // Rectangular/"boxed" legend alternative to the curved-arc style:
+    // plain <rect>+<text> rows, centered in the figure's empty middle by
+    // default (draggable via makeLegendDraggable, since the center hole
+    // shrinks as more BLAST comparison rings are selected and can
+    // genuinely collide with a naively-centered box). rows is an array of
+    // {swatchColor, label}; a saved manual position fully replaces the
+    // default centered placement (no angle to preserve, unlike curved
+    // mode's findClearAngle).
+    function plotLegendRect(qryId, legendKey, rows, boxWidth) {
+        var rowHeight = 14, swatchSize = 10, padding = 8;
+        var boxHeight = rows.length * rowHeight + padding * 2;
+
+        var legend = d3.select('#focus').append('g');
+
+        legend.append('rect')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', boxWidth).attr('height', boxHeight)
+            .style('stroke', '#bdbdbd')
+            .style('fill', '#cccccc2b')
+            .style('stroke-width', '0.5');
+
+        var row = legend.selectAll('.legend-rect-row')
+            .data(rows)
+            .enter()
+            .append('g')
+            .attr('transform', function(d, i) { return 'translate(' + padding + ',' + (padding + i * rowHeight) + ')'; });
+
+        row.append('rect')
+            .attr('width', swatchSize).attr('height', swatchSize)
+            .style('fill', function(d) { return d.swatchColor; })
+            .style('stroke', '#737373')
+            .style('stroke-width', 0.5);
+
+        row.append('text')
+            .attr('x', swatchSize + 5)
+            .attr('y', swatchSize - 1)
+            .style('font-size', '9px')
+            .style('font-family', 'Helvetica')
+            .text(function(d) { return d.label; });
+
+        var saved = PlasmidMapperEdits.getLegendPosition(qryId, legendKey);
+        var defaultX = -boxWidth / 2, defaultY = -boxHeight / 2;
+        var startX = saved ? saved.x : defaultX, startY = saved ? saved.y : defaultY;
+
+        var currentTransform = { x: startX, y: startY };
+        var dragOrigin, pointerOrigin;
+        legend.attr('transform', 'translate(' + currentTransform.x + ',' + currentTransform.y + ')')
+            .style('cursor', 'grab');
+
+        legend.call(d3.drag()
+            .container(d3.select('#focus').node())
+            .on('start', function(event) {
+                this.style.cursor = 'grabbing';
+                dragOrigin = { x: currentTransform.x, y: currentTransform.y };
+                pointerOrigin = { x: event.x, y: event.y };
+            })
+            .on('drag', function(event) {
+                currentTransform.x = dragOrigin.x + (event.x - pointerOrigin.x);
+                currentTransform.y = dragOrigin.y + (event.y - pointerOrigin.y);
+                d3.select(this).attr('transform', 'translate(' + currentTransform.x + ',' + currentTransform.y + ')');
+            })
+            .on('end', function(event) {
+                this.style.cursor = 'grab';
+                PlasmidMapperEdits.setLegendPosition(qryId, legendKey, currentTransform.x, currentTransform.y);
+            }));
+    }
+
     function plotLegend(qryId, data) {
+        var orf_labels_for_rect = {
+            'ARGs': 'args', 'Insertion sequences': 'isel', 'Transposons': 'transposase',
+            'Virulence factors': 'virulence', 'Biocide and metal resistance': 'biocidemetal',
+            'Integron': 'integrase', 'Hypothetical proteins': 'hypothetical', 'Other': 'other'
+        };
+        if (renderSettings.orfLegendStyle === 'rect') {
+            var rows = Object.keys(orf_labels_for_rect).map(function(txt) {
+                return { swatchColor: ORF_COLOR[orf_labels_for_rect[txt]], label: txt };
+            });
+            plotLegendRect(qryId, ORF_LEGEND_KEY, rows, 160);
+            return;
+        }
+
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
         var legend = d3.select('#focus').append('g')
@@ -257,9 +387,25 @@ $(document).ready(function() {
             .style('fill', '#cccccc2b')
             .style('stroke-width', '0.5');
 
+        makeLegendDraggable(legend, qryId, ORF_LEGEND_KEY);
+
     }
 
     function plotBlastLegend(qryId, data) {
+        if (renderSettings.blastLegendStyle === 'rect') {
+            var rows = selected_alignments.map(function(key, i) {
+                var subjectName = key.split('$')[1] || key;
+                // Truncate by character count for a predictable box width,
+                // consistent with this file's chunkSubstr precedent rather
+                // than a getBBox() measurement pass for a row set whose
+                // count/content varies with the current ring selection.
+                if (subjectName.length > 20) subjectName = subjectName.slice(0, 19) + '…';
+                return { swatchColor: Color_collection[i % Color_collection.length], label: subjectName };
+            });
+            plotLegendRect(qryId, BLAST_LEGEND_KEY, rows, 180);
+            return;
+        }
+
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
 
@@ -361,6 +507,8 @@ $(document).ready(function() {
             .style('stroke', '#bdbdbd')
             .style('fill', '#cccccc2b')
             .style('stroke-width', '0.5');
+
+        makeLegendDraggable(legend, qryId, BLAST_LEGEND_KEY);
 
     }
 
@@ -702,7 +850,13 @@ $(document).ready(function() {
                     .style('fill', 'none');
 
 
-                var midPoint = d.sidx + Math.abs(d.sidx - d.eidx),
+                // Must match getORFLables' own midpoint formula (below) so
+                // the label lands where its leader line actually points --
+                // this used to omit the /2, which for eidx > sidx reduces
+                // to just `eidx` (the ORF's end coordinate, not its middle),
+                // scattering labels away from their ORFs for anything but
+                // the narrowest features.
+                var midPoint = (d.sidx + d.eidx) / 2,
                     x = (secondRadius + 18) * Math.cos(tcoord2Angle(midPoint) - half_pi),
                     y = (secondRadius + 18) * Math.sin(tcoord2Angle(midPoint) - half_pi);
                 var labelOverride = d._labelOverride;
@@ -1104,6 +1258,16 @@ $(document).ready(function() {
             renderSettings.radiusStep = val;
             rerenderCurrentPlasmid();
         }
+    });
+
+    $('#orf-legend-style-select').on('change', function() {
+        renderSettings.orfLegendStyle = $(this).val();
+        rerenderCurrentPlasmid();
+    });
+
+    $('#blast-legend-style-select').on('change', function() {
+        renderSettings.blastLegendStyle = $(this).val();
+        rerenderCurrentPlasmid();
     });
 
     var qrySelectEl = document.getElementById('qryselect');

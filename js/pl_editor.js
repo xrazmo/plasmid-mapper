@@ -36,7 +36,8 @@ var PlasmidMapperEdits = (function() {
         if (!store[qryId]) {
             store[qryId] = {
                 annotations: { added: [], removed: [] },
-                labels: {}
+                labels: {},
+                legends: {}
             };
         }
         return store[qryId];
@@ -102,6 +103,29 @@ var PlasmidMapperEdits = (function() {
             delete entry.labels[labelKey];
         }
         persist();
+    }
+
+    // --- Legends (draggable position for the ORF-category / BLAST-subject
+    // curved or rectangular legend groups) --------------------------------
+    // Legend position is a rendering-transform concern, not plotted data,
+    // so unlike annotations/labels it's read directly by plotLegend()/
+    // plotBlastLegend() rather than flowing through mergeEdits().
+
+    // Curved-legend mode is constrained to slide around the ring (angle
+    // only, via angleDeg); rectangular/boxed mode is freely positioned in
+    // the center hole (via x/y). Pass whichever pair applies; the unused
+    // pair is left undefined rather than forcing every caller to pass all
+    // three.
+    function setLegendPosition(qryId, legendKey, x, y, angleDeg) {
+        var entry = ensurePlasmidEntry(qryId);
+        entry.legends = entry.legends || {}; // defensive: an edits blob saved before this field existed won't have it
+        entry.legends[legendKey] = { x: x, y: y, angleDeg: angleDeg };
+        persist();
+    }
+
+    function getLegendPosition(qryId, legendKey) {
+        var entry = store[qryId];
+        return (entry && entry.legends && entry.legends[legendKey]) || null;
     }
 
     // --- Merge into base Contig_ref data at render time -------------------
@@ -214,6 +238,8 @@ var PlasmidMapperEdits = (function() {
         setLabelText: setLabelText,
         addFreeformLabel: addFreeformLabel,
         deleteLabel: deleteLabel,
+        setLegendPosition: setLegendPosition,
+        getLegendPosition: getLegendPosition,
         exportEdits: exportEdits,
         importEditsFromFile: importEditsFromFile,
         getEntry: ensurePlasmidEntry
