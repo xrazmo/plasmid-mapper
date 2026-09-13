@@ -9,13 +9,17 @@ def build_contig_ref_entry(query_id, qlen, definition, organism, orf_records, an
     annotations: list of {sidx, eidx} "zoomed band" regions. Each is given
     a stable id (ann-0, ann-1, ...) so the frontend edits-overlay can
     reference/remove base annotations without relying on fragile
-    coordinate-string matching. Defaults to a single band spanning the
-    whole plasmid, matching the fallback pattern already used for very
-    short reference contigs in the hand-curated data (e.g. "annotations:
-    [{sidx: 0, eidx: qlen}]").
+    coordinate-string matching. Defaults to no bands at all: a
+    whole-plasmid band (matching the {sidx: 0, eidx: qlen} pattern seen in
+    the hand-curated data) only makes sense there for tiny single-gene
+    reference contigs where "the whole thing" is a meaningful zoom target;
+    for a full-size plasmid it re-renders every ORF a second time at full
+    scale with no zoom benefit, cluttering the figure. The user adds a
+    band interactively (mapper.html's "Add band") once they know which
+    region is worth zooming in on.
     """
     if annotations is None:
-        annotations = [{"sidx": 0, "eidx": qlen}]
+        annotations = []
     annotations_with_ids = [
         {"id": f"ann-{i}", "sidx": ann["sidx"], "eidx": ann["eidx"]}
         for i, ann in enumerate(annotations)

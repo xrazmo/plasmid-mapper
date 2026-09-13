@@ -16,12 +16,13 @@ _KEYWORD_RULES = [
 ]
 
 
-def search_uniprot(query_faa_path, db_prefix, min_identity, min_coverage):
+def search_uniprot(query_faa_path, db_prefix, molecule, min_identity, min_coverage):
+    program = "blastp" if molecule == "prot" else "tblastn"
     return best_hit_against_db(
         query_faa_path,
         db_prefix,
         "UniProt/SwissProt",
-        "blastp",
+        program,
         min_identity,
         min_coverage,
     )

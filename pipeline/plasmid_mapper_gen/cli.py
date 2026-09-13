@@ -108,12 +108,12 @@ def run_pipeline(config: RunConfig) -> None:
             f.write(f">{orf.locus_tag}\n{orf.protein_seq}\n")
 
         card_hit = (
-            search_card(query_faa_path, db_prefixes["card"], config.min_identity, config.min_coverage)
+            search_card(query_faa_path, db_prefixes["card"], registry["card"].molecule, config.min_identity, config.min_coverage)
             if "card" in db_prefixes
             else None
         )
         bacmet_hit = (
-            search_bacmet(query_faa_path, db_prefixes["bacmet"], config.min_identity, config.min_coverage)
+            search_bacmet(query_faa_path, db_prefixes["bacmet"], registry["bacmet"].molecule, config.min_identity, config.min_coverage)
             if "bacmet" in db_prefixes
             else None
         )
@@ -123,7 +123,7 @@ def run_pipeline(config: RunConfig) -> None:
             else None
         )
         uniprot_hit = (
-            search_uniprot(query_faa_path, db_prefixes["uniprot"], config.min_identity, config.min_coverage)
+            search_uniprot(query_faa_path, db_prefixes["uniprot"], registry["uniprot"].molecule, config.min_identity, config.min_coverage)
             if "uniprot" in db_prefixes
             else None
         )

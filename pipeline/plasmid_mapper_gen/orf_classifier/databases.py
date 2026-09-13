@@ -4,12 +4,42 @@ from dataclasses import dataclass
 from ..external_tools import run
 from ..utils.errors import PipelineError
 
+_NUCLEOTIDE_CHARS = set("ACGTUNRYSWKMBDHV-")
+
+
+def detect_molecule(fasta_path: str) -> str:
+    """Sniff whether a FASTA file is nucleotide or protein by inspecting
+    its first sequence's character composition.
+
+    Database identity does not reliably imply molecule type: CARD, for
+    instance, is distributed in both nucleotide (gene sequences) and
+    protein (translated homolog models) FASTA files depending on which
+    release artifact a user downloads, and hardcoding an assumption here
+    previously caused every CARD search to silently return zero hits
+    (blastp against a nucleotide database matches nothing) -- discovered
+    when a real KPC-33 plasmid's Prokka-annotated bla_KPC ORF, confirmed
+    present via Prokka's own generic annotation, was misclassified as
+    "hypothetical" because the CARD FASTA in use was nucleotide.
+    """
+    with open(fasta_path) as f:
+        f.readline()  # header
+        sample = ""
+        while len(sample) < 200:
+            line = f.readline()
+            if not line or line.startswith(">"):
+                break
+            sample += line.strip()
+    if not sample:
+        raise PipelineError(f"Could not read a sequence from {fasta_path}")
+    nucleotide_fraction = sum(1 for c in sample.upper() if c in _NUCLEOTIDE_CHARS) / len(sample)
+    return "nucl" if nucleotide_fraction > 0.95 else "prot"
+
 
 @dataclass
 class ReferenceDatabase:
     name: str  # human-readable, used verbatim as `dbname` in output
     fasta_path: str
-    molecule: str  # "prot" or "nucl"
+    molecule: str  # "prot" or "nucl" -- see detect_molecule()
 
 
 def ensure_blast_db(db: ReferenceDatabase, index_dir: str) -> str:
@@ -52,21 +82,27 @@ def build_registry(db_dir: str) -> dict:
     Any of the four may be omitted (missing file); classify_orf() treats an
     absent database as "no hit" for that tier rather than failing the run,
     so a user without e.g. an ISfinder FASTA can still get partial results.
+
+    Molecule type (nucleotide vs protein) is auto-detected per file via
+    detect_molecule() rather than assumed from the database's identity --
+    see that function's docstring for why a fixed assumption is unsafe.
     """
-    candidates = {
-        "card": ReferenceDatabase("CARD", os.path.join(db_dir, "card.fasta"), "prot"),
-        "bacmet": ReferenceDatabase(
-            "biocide and metal resistance database",
-            os.path.join(db_dir, "bacmet.fasta"),
-            "prot",
-        ),
-        "isfinder": ReferenceDatabase(
-            "ISFinder", os.path.join(db_dir, "isfinder.fasta"), "nucl"
-        ),
-        "uniprot": ReferenceDatabase(
-            "UniProt/SwissProt",
-            os.path.join(db_dir, "uniprot_sprot.fasta"),
-            "prot",
-        ),
+    names = {
+        "card": "CARD",
+        "bacmet": "biocide and metal resistance database",
+        "isfinder": "ISFinder",
+        "uniprot": "UniProt/SwissProt",
     }
-    return {key: db for key, db in candidates.items() if os.path.exists(db.fasta_path)}
+    registry = {}
+    for key, filename in [
+        ("card", "card.fasta"),
+        ("bacmet", "bacmet.fasta"),
+        ("isfinder", "isfinder.fasta"),
+        ("uniprot", "uniprot_sprot.fasta"),
+    ]:
+        fasta_path = os.path.join(db_dir, filename)
+        if os.path.exists(fasta_path):
+            registry[key] = ReferenceDatabase(
+                names[key], fasta_path, detect_molecule(fasta_path)
+            )
+    return registry
