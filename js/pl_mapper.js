@@ -941,7 +941,11 @@ $(document).ready(function() {
                     .attr('id', 'orf-' + idSuffix)
                     .attr('data-orf-id', d.id)
                     .attr('data-band-id', bc.ann.id)
-                    .attr("d", getArrowedArc(bc.secondRadius + 2, bc.secondRadius + 8, bc.tcoord2Angle(d.sidx),
+                    // Thicker than the main-ring ORF arrows (orfR[0]/orfR[1],
+                    // a 5-unit span) since this copy lives in the zoomed-in
+                    // band, where a bigger, easier-to-see ORF is the point of
+                    // zooming in in the first place.
+                    .attr("d", getArrowedArc(bc.secondRadius + 1, bc.secondRadius + 10, bc.tcoord2Angle(d.sidx),
                         bc.tcoord2Angle(d.eidx), d.strand == 1))
                     .style('fill', renderSettings.colors[d.type])
                     .style('stroke', '#737373')
@@ -970,7 +974,9 @@ $(document).ready(function() {
                     // labels should be visible immediately rather than
                     // requiring a click to reveal. Still click-to-hide
                     // via the ORF-arrow handler above if it gets crowded.
-                    .attr("d", getORFLables(secondRadius + 8, secondRadius + 18,
+                    // Starts at +10 (not +8) to clear the thicker band ORF
+                    // arc's new outer edge (bc.secondRadius + 10 above).
+                    .attr("d", getORFLables(secondRadius + 10, secondRadius + 20,
                         tcoord2Angle(d.sidx), tcoord2Angle(d.eidx)))
                     .style('stroke', '#000')
                     .style("stroke-dasharray", ("1,1"))
@@ -985,8 +991,8 @@ $(document).ready(function() {
                 // scattering labels away from their ORFs for anything but
                 // the narrowest features.
                 var midPoint = (d.sidx + d.eidx) / 2,
-                    x = (secondRadius + 18) * Math.cos(tcoord2Angle(midPoint) - half_pi),
-                    y = (secondRadius + 18) * Math.sin(tcoord2Angle(midPoint) - half_pi);
+                    x = (secondRadius + 20) * Math.cos(tcoord2Angle(midPoint) - half_pi),
+                    y = (secondRadius + 20) * Math.sin(tcoord2Angle(midPoint) - half_pi);
                 var labelOverride = d._labelOverride;
                 var initRotation = 0;
                 if (labelOverride && typeof labelOverride.x === 'number') {
