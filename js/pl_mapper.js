@@ -100,8 +100,16 @@ $(document).ready(function() {
         }
 
 
+        // Default (for a plasmid ID not in the hand-curated lengendAngle
+        // map above) must not collide with plotBlastLegend's own default
+        // below -- both used to fall back to the same angle (0), so for
+        // any newly pipeline-generated plasmid the two legends' curved
+        // text rendered on top of each other. Placing them ~180 degrees
+        // apart by default keeps them clear of each other; either can
+        // still be overridden per-ID above once real ORF/BLAST-ring
+        // density is known.
         var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : -90 * deg,
             k = 0,
             step = 2.7 * deg;
         var ta, tb, bias, sa, sb;
@@ -186,8 +194,11 @@ $(document).ready(function() {
             "s202ECL_2": -45 * deg,
             "s304ECL_3": 210 * deg,
         }
+        // See the matching comment in plotLegend() above: this default
+        // must stay well clear of that function's default angle so the two
+        // legends' curved text don't overlap for a new plasmid ID.
         var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 90 * deg,
             k = 0,
             step = 4.5 * Math.PI / 180;
         var ta, tb, bias, sa, sb;
