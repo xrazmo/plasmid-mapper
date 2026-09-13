@@ -99,7 +99,7 @@ $(document).ready(function() {
 
 
         var radius = controls.radius,
-            sAngle = lengendAngle[qryId],
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 0,
             k = 0,
             step = 2.7 * deg;
         var ta, tb, bias, sa, sb;
@@ -885,5 +885,7 @@ $(document).ready(function() {
         }
     });
 
-    $('#qryselect').val('s082Km_2').change();
+    var qrySelectEl = document.getElementById('qryselect');
+    var defaultQryId = qrySelectEl.options.length > 1 ? qrySelectEl.options[1].value : qrySelectEl.options[0].value;
+    $('#qryselect').val(defaultQryId).change();
 });
