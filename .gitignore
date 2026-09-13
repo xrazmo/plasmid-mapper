@@ -10,3 +10,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 *.pyc
+
+# Reference databases (large, fetched on demand via
+# pipeline/scripts/fetch_reference_databases.py -- never committed)
+pipeline/.dbs/
