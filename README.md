@@ -4,8 +4,7 @@ A D3.js tool for visualizing and comparing circular plasmids as
 publication-ready figures. It renders a query plasmid as a circular map
 annotated with ORFs (resistance genes, insertion sequences, transposons,
 virulence factors, etc.) and overlays BLAST comparison rings against a
-set of related reference plasmids — similar in spirit to tools like BRIG
-or Proksee's ring viewer.
+set of related reference plasmids.
 
 A companion Python pipeline (`pipeline/`) generates the map data
 directly from FASTA files — running Prokka, classifying every predicted
