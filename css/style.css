@@ -141,6 +141,26 @@ table {
     font-weight: bolder;
 }
 
+.orf-tooltip {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    background: rgba(33, 33, 33, 0.92);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 8px 10px;
+    border-radius: 4px;
+    max-width: 320px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.orf-tooltip .orf-tooltip-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+    display: block;
+}
+
 .tick>line {
     stroke-dasharray: 1.2;
 }

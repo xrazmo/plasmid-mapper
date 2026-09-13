@@ -48,7 +48,7 @@ $(document).ready(function() {
             }
         });
         tabulate(data, columns);
-        plotLegend(qryId);
+        plotLegend(qryId, effectiveData);
 
         $('.big-checkbox').change(function() {
             var id = $(this).attr('id');
@@ -73,7 +73,62 @@ $(document).ready(function() {
 
     }
 
-    function plotLegend(qryId) {
+    // Scans candidate angles (every 15 degrees) and returns the first
+    // whose [angle, angle + requiredArcWidth] window doesn't overlap any
+    // entry in occupiedRanges (each {start, end}, radians, normalized into
+    // [0, 2*PI) by the caller). Falls back to the candidate with the
+    // smallest total overlap if every candidate collides with something --
+    // this can happen with several user-added zoom bands plus both
+    // legends already occupying angular space -- rather than ever leaving
+    // an angle undefined (which would regress to the pre-Stage-0 NaN
+    // legend bug this builds on top of).
+    function findClearAngle(occupiedRanges, requiredArcWidth) {
+        var pi2 = 2 * Math.PI;
+        var normalize = function(a) { return ((a % pi2) + pi2) % pi2; };
+
+        function windowOverlap(startA, endA) {
+            var total = 0;
+            occupiedRanges.forEach(function(range) {
+                var s = normalize(range.start), e = normalize(range.end);
+                if (e < s) e += pi2; // occupied range straddles the 0/2*PI seam
+                // Test the candidate window against the occupied range,
+                // and again shifted by +/- 2*PI so a candidate window that
+                // itself straddles the seam is checked correctly too.
+                [-pi2, 0, pi2].forEach(function(shift) {
+                    var os = Math.max(startA, s + shift);
+                    var oe = Math.min(endA, e + shift);
+                    if (oe > os) total += (oe - os);
+                });
+            });
+            return total;
+        }
+
+        var bestAngle = 0, bestOverlap = Infinity;
+        for (var deg = 0; deg < 360; deg += 15) {
+            var candidate = deg * Math.PI / 180;
+            var overlap = windowOverlap(candidate, candidate + requiredArcWidth);
+            if (overlap <= 0) return candidate;
+            if (overlap < bestOverlap) {
+                bestOverlap = overlap;
+                bestAngle = candidate;
+            }
+        }
+        return bestAngle; // starvation fallback: smallest-overlap candidate
+    }
+
+    // Annotation bands are drawn as a dashed highlight box near the main
+    // query ring (recR in plotPlasmid, roughly radius-7 to radius+15) --
+    // well inside where the legends are drawn (radius+15 to radius+37), so
+    // only bands would actually visually intersect a legend at all; this
+    // helper converts data.annotations into the {start, end} ranges
+    // findClearAngle expects.
+    function annotationOccupiedRanges(data, coord2Angle) {
+        return (data.annotations || []).map(function(ann) {
+            return { start: coord2Angle(ann.sidx), end: coord2Angle(ann.eidx) };
+        });
+    }
+
+    function plotLegend(qryId, data) {
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
         var legend = d3.select('#focus').append('g')
@@ -99,20 +154,33 @@ $(document).ready(function() {
             "s202ECL_2": 140 * deg,
         }
 
+        // Total angular width this legend's arc actually needs, computed
+        // from the real (fixed) category list rather than assumed --
+        // sum of every coef times step, matching how the loop below lays
+        // categories out one after another starting at sAngle.
+        var totalCoef = 0;
+        $.each(orf_labels, function(txt, d) { totalCoef += d.coef; });
+        var requiredArcWidth = totalCoef * (2.7 * deg);
 
         // Default (for a plasmid ID not in the hand-curated lengendAngle
-        // map above) must not collide with plotBlastLegend's own default
-        // below -- both used to fall back to the same angle (0), so for
-        // any newly pipeline-generated plasmid the two legends' curved
-        // text rendered on top of each other. Placing them ~180 degrees
-        // apart by default keeps them clear of each other; either can
-        // still be overridden per-ID above once real ORF/BLAST-ring
-        // density is known.
+        // map above): avoid both any user-added zoom band (data.annotations)
+        // and plotBlastLegend's own placement, computed dynamically via
+        // findClearAngle rather than a fixed guess -- a fixed default used
+        // to just avoid the OTHER legend's fixed default, which didn't
+        // account for annotation bands at all (confirmed: selecting a band
+        // under a legend's fixed position made both unreadable together).
+        var coord2Angle = d3.scaleLinear().range([0, pi2]).domain([0, data.qlen]);
+        var occupiedRanges = annotationOccupiedRanges(data, coord2Angle);
         var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : -90 * deg,
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth),
             k = 0,
             step = 2.7 * deg;
         var ta, tb, bias, sa, sb;
+
+        // Stash this legend's occupied window so plotBlastLegend (called
+        // later, from a different handler once BLAST rings are selected)
+        // can avoid it too.
+        controls.orfLegendOccupied = { start: sAngle, end: sAngle + requiredArcWidth };
 
         var lgTxt = legend.append('text');
 
@@ -179,7 +247,7 @@ $(document).ready(function() {
 
     }
 
-    function plotBlastLegend(qryId) {
+    function plotBlastLegend(qryId, data) {
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
 
@@ -194,11 +262,21 @@ $(document).ready(function() {
             "s202ECL_2": -45 * deg,
             "s304ECL_3": 210 * deg,
         }
-        // See the matching comment in plotLegend() above: this default
-        // must stay well clear of that function's default angle so the two
-        // legends' curved text don't overlap for a new plasmid ID.
+        var coefLocal = 2, stepLocal = 4.5 * deg;
+        // This legend's arc width varies with how many BLAST-subject rings
+        // are checked (a text arc is shared per pair of rings) -- computed
+        // from the real selection count rather than assumed fixed.
+        var requiredArcWidth = Math.ceil(selected_alignments.length / 2) * coefLocal * stepLocal;
+
+        // Default: avoid any user-added zoom band AND plotLegend's already-
+        // chosen window (stashed on controls.orfLegendOccupied when it ran),
+        // computed dynamically via findClearAngle rather than a fixed guess
+        // that only ever avoided the other legend's own fixed default.
+        var coord2Angle = d3.scaleLinear().range([0, pi2]).domain([0, data.qlen]);
+        var occupiedRanges = annotationOccupiedRanges(data, coord2Angle);
+        if (controls.orfLegendOccupied) occupiedRanges.push(controls.orfLegendOccupied);
         var radius = controls.radius,
-            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : 90 * deg,
+            sAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth),
             k = 0,
             step = 4.5 * Math.PI / 180;
         var ta, tb, bias, sa, sb;
@@ -527,17 +605,18 @@ $(document).ready(function() {
                 }
             });
 
-            qryfocus.append("path")
+            var outerOrfArc = qryfocus.append("path")
                 .attr('class', "orf " + d.type)
                 .attr("d", getArrowedArc(orfR[0], orfR[1], coord2Angle(d.sidx),
                     coord2Angle(d.eidx), d.strand == 1))
                 .style('fill', ORF_COLOR[d.type])
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
+            attachOrfTooltip(outerOrfArc, d);
 
-            // Also plot the ORF on the second/inner/zoomed axis    
+            // Also plot the ORF on the second/inner/zoomed axis
             if (isAnn) {
-                qryfocus.append("path")
+                var innerOrfArc = qryfocus.append("path")
                     .attr('class', "orf " + d.type)
                     .attr('id', 'orf-' + d.id)
                     .attr("d", getArrowedArc(secondRadius + 2, secondRadius + 8, tcoord2Angle(d.sidx),
@@ -550,6 +629,7 @@ $(document).ready(function() {
                         d3.select('#line-' + orfid).attr('display', curStat == 'none' ? 'block' : 'none');
                         d3.select('#txt-' + orfid).attr('display', curStat == 'none' ? 'block' : 'none');
                     });
+                attachOrfTooltip(innerOrfArc, d);
             }
             if (d.type == 'hypothetical') return;
 
@@ -557,6 +637,7 @@ $(document).ready(function() {
                 orfLblR = secondRadius + 10
                 textg.append('path')
                     .attr('id', 'line-' + d.id)
+                    .attr('display', 'none') // hidden by default: color/category coding is enough at a glance; click the ORF arrow to reveal its short label, hover shows full detail
                     .attr("d", getORFLables(secondRadius + 8, secondRadius + 18,
                         tcoord2Angle(d.sidx), tcoord2Angle(d.eidx)))
                     .style('stroke', '#000')
@@ -578,6 +659,7 @@ $(document).ready(function() {
                 textg.append('g')
                     .append('text')
                     .attr('id', 'txt-' + d.id)
+                    .attr('display', 'none') // hidden by default, matches '#line-' + d.id above; toggled together by the ORF-arrow click handler
                     .attr('x', x)
                     .attr('y', y)
                     .attr('transform', 'rotate(' + initRotation + ',' + x + ',' + y + ')')
@@ -887,7 +969,8 @@ $(document).ready(function() {
 
             });
 
-            plotBlastLegend(qryId);
+            var effectiveDataForLegend = PlasmidMapperEdits.mergeEdits(qryId, Contig_ref[qryId]);
+            plotBlastLegend(qryId, effectiveDataForLegend);
 
         }
 

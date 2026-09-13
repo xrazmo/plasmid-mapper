@@ -1,6 +1,6 @@
 const ORF_COLOR = { "hypothetical": "#FEE08B", "transposase": "#225EA8", "isel": "#1D91C0", "integrase": "#41AB5D", "virulence": "#BF812D", "biocidemetal": "#FD8D3C", "unknown": "#969696", "other": "#99D8C9", "args": "#a50f15" };
 
-const Mismatch_COLOR = { "m": "#f32707", "s": "#f32707", "q": "#f32707" }
+const Mismatch_COLOR = { "m": "#f32707", "s": "#f32707", "q": "#f32707", "gap": "#f2960c" }
     // const Color_collection = ["#FFC0CB", "#FF69B4", "#C71585", "#8B008B",
     //     "#6A5ACD",
     //     "#FFA07A", "#B22222", "#FF4500",

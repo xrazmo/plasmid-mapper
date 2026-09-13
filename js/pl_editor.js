@@ -519,3 +519,44 @@ function armFreeformLabelPlacement(qryId) {
 
     svg.on('click.freeform-placement', placementHandler);
 }
+
+// Hover tooltip shown on any ORF arrow (every ORF everywhere on the
+// plasmid, not just ones inside a zoomed band) with the full detail a
+// permanent label doesn't show by default: name, identity%, coverage%,
+// source database, and category. One reusable <div id="orf-tooltip">
+// (declared once in mapper.html/kpc33_viewer.html) is filled and
+// positioned on mouseenter, hidden on mouseleave -- cheaper than a
+// per-element tooltip and there's only ever one visible at a time anyway.
+var ORF_CATEGORY_LABELS = {
+    args: 'ARG', isel: 'Insertion sequence', transposase: 'Transposon',
+    integrase: 'Integron', virulence: 'Virulence factor',
+    biocidemetal: 'Biocide/metal resistance', hypothetical: 'Hypothetical protein',
+    other: 'Other', unknown: 'Unknown'
+};
+
+function attachOrfTooltip(selection, d) {
+    selection.on('mouseenter', function(event) {
+        var tooltip = document.getElementById('orf-tooltip');
+        if (!tooltip) return;
+        var category = ORF_CATEGORY_LABELS[d.type] || d.type;
+        var idty = typeof d.idty === 'number' ? d.idty.toFixed(1) + '%' : '—';
+        var cov = typeof d.cov === 'number' ? d.cov.toFixed(1) + '%' : '—';
+        var dbname = d.dbname || '—';
+        tooltip.innerHTML =
+            '<span class="orf-tooltip-name">' + (d.dscr || 'Unknown') + '</span>' +
+            'Category: ' + category + '<br>' +
+            'Identity: ' + idty + ' &nbsp; Coverage: ' + cov + '<br>' +
+            'Database: ' + dbname;
+        tooltip.style.display = 'block';
+        tooltip.style.left = (event.clientX + 12) + 'px';
+        tooltip.style.top = (event.clientY + 12) + 'px';
+    }).on('mousemove', function(event) {
+        var tooltip = document.getElementById('orf-tooltip');
+        if (!tooltip) return;
+        tooltip.style.left = (event.clientX + 12) + 'px';
+        tooltip.style.top = (event.clientY + 12) + 'px';
+    }).on('mouseleave', function() {
+        var tooltip = document.getElementById('orf-tooltip');
+        if (tooltip) tooltip.style.display = 'none';
+    });
+}
