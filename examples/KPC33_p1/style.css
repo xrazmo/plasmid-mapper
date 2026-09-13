@@ -1,0 +1,150 @@
+/* #spinner {
+    display: none;
+}
+
+.busy {
+    display: block !important;
+} */
+
+.table td {
+    vertical-align: middle!important;
+}
+
+.table {
+    fill: #bbc1c161;
+    font-stretch: extra-condensed;
+}
+
+
+/* .tick line {
+    color: #c1caca;
+    stroke-dasharray: 2px;
+} */
+
+table {
+    white-space: nowrap;
+}
+
+.refcontext .x-axis {
+    fill: #ffffe5;
+}
+
+.my-custom-scrollbar {
+    position: relative;
+    height: 500px;
+    overflow: auto;
+    box-shadow: 1px 3px #888888;
+}
+
+.table-wrapper-scroll-y {
+    display: block;
+}
+
+.big-checkbox {
+    width: 20px;
+    height: 20px;
+}
+
+
+/* .e-ring {
+    fill: #f0f0f099;
+    stroke: #1d1c1c;
+    stroke-width: 0.1;
+    stroke-dasharray: 5;
+}
+
+.o-ring {
+    fill: none;
+}
+
+/* .alignbox:hover {
+    fill: #6baed6;
+    ;
+    stroke: #6baed6;
+    stroke-width: 1px;
+    cursor: pointer;
+} */
+
+
+ 
+.m {
+    stroke: #f32707;
+    stroke-width: 0.2px;
+}
+
+.s {
+    stroke: #f32707;
+    stroke-width: 0.2px;
+}
+
+.q {
+    stroke: #f32707;
+    stroke-width: 0.2px;
+}
+
+.other {
+    fill: #99D8C9;
+}
+
+.args {
+    fill: #a50f15;
+}
+
+.hypothetical {
+    fill: #FEE08B;
+}
+
+.transposase {
+    fill: #225EA8;
+}
+
+.isel {
+    fill: #1D91C0;
+}
+
+.integrase {
+    fill: #41AB5D;
+}
+
+.virulence {
+    fill: #BF812D;
+}
+
+.biocidemetal {
+    fill: #FD8D3C;
+}
+
+.unknown {
+    fill: #969696;
+}
+
+.axis {
+    stroke-width: 0.2px;
+    stroke: #000;
+    font: 5px avenir next, sans-serif;
+}
+
+.axis>path {
+    stroke: #888;
+}
+
+.taxis {
+    stroke-width: 0.1px;
+    stroke: rgb(66, 66, 66);
+    font: 3px avenir next, sans-serif;
+}
+
+.orfLbl {
+    fill: #fff;
+    font-size: 10px;
+    mix-blend-mode: difference;
+    font-weight: bolder;
+}
+
+.tick>line {
+    stroke-dasharray: 1.2;
+}
+
+
+
+;
