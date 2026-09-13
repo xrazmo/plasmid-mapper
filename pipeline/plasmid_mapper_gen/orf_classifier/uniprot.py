@@ -3,6 +3,17 @@ from .blast_search import best_hit_against_db
 # Ordered by specificity: checked top-to-bottom, first match wins. A
 # maintainable single list rather than scattered inline string checks, so
 # adding/tuning keywords doesn't require touching classification logic.
+#
+# The "virulence" rule here is a fallback, not the primary virulence
+# signal: merge.py's classify_orf() now checks a dedicated VFDB tier
+# ahead of UniProt, so this only ever fires for an ORF that VFDB missed
+# (no vfdb.fasta in --db-dir, or its best VFDB hit didn't clear
+# --min-identity/--min-coverage). VFDB's setA is a deliberately curated
+# core set, not exhaustive, so a same-ORF UniProt keyword match at that
+# point is a genuine second-best signal rather than noise VFDB was meant
+# to replace -- removing it would silently downgrade such ORFs to "other"
+# any time vfdb.fasta happens to be missing, which is worse than today's
+# behavior, not better.
 _KEYWORD_RULES = [
     ("transposase", ["transposase", "transposon"]),
     ("integrase", ["integrase", "integron"]),

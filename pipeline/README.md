@@ -18,18 +18,39 @@ used, but nothing breaks either way.)
 
 ## Reference databases
 
-You need local copies of up to four protein/nucleotide databases used to
-classify each predicted ORF. Point `--db-dir` at a directory containing any
-of the following (missing ones are simply skipped — ORFs that would have
-matched them fall through to the next database, or end up "hypothetical"
-if none match):
+You need local copies of up to five protein/nucleotide databases used to
+classify each predicted ORF, checked in this priority order (a higher-
+priority database's hit always wins, regardless of relative identity/
+coverage): **CARD > ISfinder > VFDB > BacMet > UniProt/SwissProt**. Point
+`--db-dir` at a directory containing any of the following (missing ones
+are simply skipped — ORFs that would have matched them fall through to
+the next database, or end up "hypothetical" if none match).
 
-| File in `--db-dir` | Database | Used for | How to obtain |
+These files are large (UniProt alone is ~300MB decompressed) and are
+never committed to this repository. The easiest way to populate a
+`--db-dir` is the included download script, which fetches all five from
+their real upstream sources and is safe to re-run later to refresh or
+replace any of them:
+
+```bash
+python scripts/fetch_reference_databases.py --db-dir /path/to/dbs
+# Re-fetch just one, e.g. after a new UniProt release:
+python scripts/fetch_reference_databases.py --db-dir /path/to/dbs --only uniprot --force
+```
+
+| File in `--db-dir` | Database | Used for | Source (what the script fetches) |
 |---|---|---|---|
-| `card.fasta` | CARD | antibiotic resistance genes (`args`) | Download the CARD data archive from https://card.mcmaster.ca/download and use its `protein_fasta_protein_homolog_model.fasta`. |
-| `bacmet.fasta` | BacMet | biocide/metal resistance genes (`biocidemetal`) | Download the predicted or experimentally confirmed protein FASTA from http://bacmet.biomedicine.gu.se/download.html. |
-| `isfinder.fasta` | ISfinder | insertion sequence elements (`isel`) | ISfinder has no bulk-download API; use a mirrored/exported nucleotide FASTA of IS elements (e.g. from an ISfinder BLAST export, or a curated mirror such as ISEScan's reference set). |
-| `uniprot_sprot.fasta` | UniProt/SwissProt | general annotation fallback (`virulence`/`transposase`/`integrase`/`other`/`hypothetical`, by keyword match on the hit description) | `wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz` and decompress. |
+| `card.fasta` | CARD | antibiotic resistance genes (`args`) | CARD v4.0.0 (pinned): `https://card.mcmaster.ca/download/0/broadstreet-v4.0.0.tar.bz2`, using its `protein_fasta_protein_homolog_model.fasta`. Pass `--card-version` to fetch a different release. |
+| `isfinder.fasta` | ISfinder | insertion sequence elements (`isel`) | Nucleotide IS sequences from https://github.com/thanhleviet/ISfinder-sequences (`IS.fna`). |
+| `vfdb.fasta` | VFDB (setA, curated core set) | virulence factors (`virulence`) | `https://www.mgc.ac.cn/VFs/Down/VFDB_setA_pro.fas.gz` |
+| `bacmet.fasta` | BacMet | biocide/metal resistance genes (`biocidemetal`) | Experimentally-confirmed + predicted protein FASTA from http://bacmet.biomedicine.gu.se/, concatenated into one file. |
+| `uniprot_sprot.fasta` | UniProt/SwissProt (reviewed) | general annotation fallback (`virulence`/`transposase`/`integrase`/`other`/`hypothetical`, by keyword match on the hit description — see note below) | Current release from `https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz`. |
+
+UniProt's keyword-based "virulence" classification is a fallback, not the
+primary signal — it only applies to an ORF that VFDB didn't classify
+(missing `vfdb.fasta`, or no VFDB hit clearing `--min-identity`/
+`--min-coverage`), since VFDB's setA is a curated core set rather than an
+exhaustive one.
 
 The first time you run the CLI against a raw FASTA, it builds a BLAST index
 next to it automatically (`makeblastdb`); subsequent runs reuse that index.

@@ -76,10 +76,12 @@ def ensure_blast_db(db: ReferenceDatabase, index_dir: str) -> str:
 
 
 def build_registry(db_dir: str) -> dict:
-    """Build the standard 4-database registry from a directory convention:
-    <db_dir>/card.fasta, bacmet.fasta, isfinder.fasta, uniprot_sprot.fasta.
+    """Build the standard 5-database registry from a directory convention:
+    <db_dir>/card.fasta, isfinder.fasta, vfdb.fasta, bacmet.fasta,
+    uniprot_sprot.fasta. pipeline/scripts/fetch_reference_databases.py
+    populates a directory in exactly this shape.
 
-    Any of the four may be omitted (missing file); classify_orf() treats an
+    Any of the five may be omitted (missing file); classify_orf() treats an
     absent database as "no hit" for that tier rather than failing the run,
     so a user without e.g. an ISfinder FASTA can still get partial results.
 
@@ -89,15 +91,17 @@ def build_registry(db_dir: str) -> dict:
     """
     names = {
         "card": "CARD",
-        "bacmet": "biocide and metal resistance database",
         "isfinder": "ISFinder",
+        "vfdb": "virulence factor database (VFDB)",
+        "bacmet": "biocide and metal resistance database",
         "uniprot": "UniProt/SwissProt",
     }
     registry = {}
     for key, filename in [
         ("card", "card.fasta"),
-        ("bacmet", "bacmet.fasta"),
         ("isfinder", "isfinder.fasta"),
+        ("vfdb", "vfdb.fasta"),
+        ("bacmet", "bacmet.fasta"),
         ("uniprot", "uniprot_sprot.fasta"),
     ]:
         fasta_path = os.path.join(db_dir, filename)

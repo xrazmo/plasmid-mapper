@@ -10,6 +10,7 @@ from .orf_classifier.card import search_card
 from .orf_classifier.isfinder import search_isfinder
 from .orf_classifier.merge import classify_orf
 from .orf_classifier.uniprot import search_uniprot
+from .orf_classifier.vfdb import search_vfdb
 from .pairwise.blastn_runner import run_pairwise_blastn
 from .prokka_runner import run_prokka
 from .assembler.contig_ref import build_contig_ref_entry
@@ -46,8 +47,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--db-dir",
         required=True,
         help=(
-            "Directory containing card.fasta, bacmet.fasta, isfinder.fasta, "
-            "uniprot_sprot.fasta (any may be omitted)"
+            "Directory containing card.fasta, isfinder.fasta, vfdb.fasta, "
+            "bacmet.fasta, uniprot_sprot.fasta (any may be omitted). "
+            "See scripts/fetch_reference_databases.py to populate one."
         ),
     )
     parser.add_argument("--out-dir", required=True, help="Output directory")
@@ -122,14 +124,19 @@ def run_pipeline(config: RunConfig) -> None:
             if "card" in db_prefixes
             else None
         )
-        bacmet_hit = (
-            search_bacmet(query_faa_path, db_prefixes["bacmet"], registry["bacmet"].molecule, config.min_identity, config.min_coverage)
-            if "bacmet" in db_prefixes
-            else None
-        )
         isfinder_hit = (
             search_isfinder(query_faa_path, db_prefixes["isfinder"], config.min_identity, config.min_coverage)
             if "isfinder" in db_prefixes
+            else None
+        )
+        vfdb_hit = (
+            search_vfdb(query_faa_path, db_prefixes["vfdb"], registry["vfdb"].molecule, config.min_identity, config.min_coverage)
+            if "vfdb" in db_prefixes
+            else None
+        )
+        bacmet_hit = (
+            search_bacmet(query_faa_path, db_prefixes["bacmet"], registry["bacmet"].molecule, config.min_identity, config.min_coverage)
+            if "bacmet" in db_prefixes
             else None
         )
         uniprot_hit = (
@@ -139,7 +146,13 @@ def run_pipeline(config: RunConfig) -> None:
         )
         os.remove(query_faa_path)
 
-        classification = classify_orf(card_hit, bacmet_hit, isfinder_hit, uniprot_hit)
+        classification = classify_orf(
+            card_hit=card_hit,
+            isfinder_hit=isfinder_hit,
+            vfdb_hit=vfdb_hit,
+            bacmet_hit=bacmet_hit,
+            uniprot_hit=uniprot_hit,
+        )
         orf_records.append(
             {
                 "id": i,

@@ -31,10 +31,21 @@ def check_tools_on_path(required=REQUIRED_TOOLS, optional=OPTIONAL_TOOLS) -> dic
 def run(cmd: list, error_context: str) -> subprocess.CompletedProcess:
     """Run a subprocess command, raising PipelineError with the command's
     stderr on failure instead of a raw CalledProcessError traceback.
+
+    Decodes stdout/stderr with errors="replace" rather than the default
+    strict UTF-8 decoding -- confirmed necessary in practice: some
+    reference databases (e.g. VFDB) contain non-UTF-8 bytes (a raw 0xA0
+    non-breaking space byte, at least) in their FASTA headers, which
+    makeblastdb echoes verbatim into its own warning/error output. With
+    strict decoding, capturing that output crashes with a
+    UnicodeDecodeError before this function ever gets a chance to inspect
+    makeblastdb's actual exit code -- a third-party tool's messy input
+    data corrupting a header comment shouldn't take down the whole
+    pipeline via an unrelated encoding crash.
     """
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True
+            cmd, capture_output=True, text=True, errors="replace", check=True
         )
     except FileNotFoundError as exc:
         raise PipelineError(
