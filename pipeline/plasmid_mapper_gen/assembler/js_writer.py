@@ -1,29 +1,37 @@
 import json
 
 
+def build_var_assignment_js(var_name: str, data: dict) -> str:
+    """Build a `var <var_name> = <data as JS-compatible JSON>;` string --
+    the single source of truth for this format, shared by the standalone
+    ref_data.js/pl_data.js writers below and by the single-HTML assembler
+    (assembler/single_html.py), which inlines the same text into a
+    <script> block instead of a separate file.
+
+    json.dumps produces JS-compatible object/array/string literals for
+    the plain-data shapes used here, so this is a straight serialization,
+    not a real JS-generation step.
+    """
+    return f"var {var_name} = {json.dumps(data, indent=2)};\n"
+
+
 def write_ref_data_js(contig_ref: dict, out_path: str):
     """Emit a ref_data.js-compatible file: `var Contig_ref = {...};`.
 
     Loaded via a plain <script> tag by mapper.html (no fetch/JSON.parse in
-    the frontend), so the output must be valid JS, not just valid JSON —
-    json.dumps produces JS-compatible object/array/string literals for the
-    plain-data shapes used here, so this is a straight serialization.
+    the frontend), so the output must be valid JS, not just valid JSON.
 
     MCR_LOC is deliberately not emitted: confirmed dead in pl_mapper.js
     (declared, never read), fully superseded by Contig_ref[...].annotations.
     """
     with open(out_path, "w") as f:
-        f.write("var Contig_ref = ")
-        json.dump(contig_ref, f, indent=2)
-        f.write(";\n")
+        f.write(build_var_assignment_js("Contig_ref", contig_ref))
 
 
 def write_pl_data_js(map_data: dict, out_path: str):
     """Emit a pl_data.js-compatible file: `var MAP_DATA = {...};`."""
     with open(out_path, "w") as f:
-        f.write("var MAP_DATA = ")
-        json.dump(map_data, f, indent=2)
-        f.write(";\n")
+        f.write(build_var_assignment_js("MAP_DATA", map_data))
 
 
 def merge_contig_ref(existing_path: str, new_entries: dict) -> dict:

@@ -11,16 +11,24 @@ conda env create -f environment.yml
 conda activate plasmid-mapper
 ```
 
-This installs Prokka, NCBI BLAST+, `diamond`, and the `plasmid-mapper-gen`
-command. `diamond` is used automatically whenever it is on `PATH` for any
-protein-vs-protein database search (CARD/VFDB/BacMet/UniProt, whenever
-that database's FASTA is protein) — it has no equivalent for a protein
-query against a nucleotide subject, so ISfinder (always nucleotide) and
-any nucleotide-molecule CARD/VFDB/BacMet release still use BLAST+'s
-`tblastn` regardless. If `diamond` is missing, the pipeline falls back to
-`blastp`/`tblastn` for everything with no functional difference in
-results, just slower — this matters most for UniProt/SwissProt, by far
-the largest of the five databases.
+This installs Prokka, NCBI BLAST+, `diamond`, Node.js, and the
+`plasmid-mapper-gen` command. `diamond` is used automatically whenever it
+is on `PATH` for any protein-vs-protein database search (CARD/VFDB/
+BacMet/UniProt, whenever that database's FASTA is protein) — it has no
+equivalent for a protein query against a nucleotide subject, so ISfinder
+(always nucleotide) and any nucleotide-molecule CARD/VFDB/BacMet release
+still use BLAST+'s `tblastn` regardless. If `diamond` is missing, the
+pipeline falls back to `blastp`/`tblastn` for everything with no
+functional difference in results, just slower — this matters most for
+UniProt/SwissProt, by far the largest of the five databases.
+
+Node.js is only needed for `--single-html`'s minification step (see
+below); ordinary `ref_data.js`/`pl_data.js` generation never touches it.
+After `conda env create`, install esbuild itself (not a conda package):
+
+```bash
+npm install -g esbuild
+```
 
 ## Reference databases
 
@@ -82,6 +90,32 @@ Each `--query`/`--reference` FASTA file must contain exactly one sequence.
 Query IDs may only contain letters, digits, `.`, `_`, `-` (no `$`, which is
 reserved as the query/subject separator in `pl_data.js`'s keys).
 
+### Single-file output
+
+Pass `--single-html` to also write `output/plasmid_viewer.html`: one
+self-contained file with the viewer's own CSS/JS inlined (minified via
+esbuild — requires `npm install -g esbuild`, see Install above) and the
+generated plasmid data inlined. Open it directly in a browser — no
+server, no `js/`/`css/` files alongside it, nothing to copy into
+`plasmid_mapper/js/`. Every interactive feature (settings, zoom bands,
+labels, the style modal, image export) works exactly as it does in
+`mapper.html`. Third-party libraries (jQuery/Bootstrap/Popper/D3/Font
+Awesome) still load from their CDNs, so viewing the file needs internet
+access for those.
+
+```bash
+plasmid-mapper-gen \
+  --query kpc33_plasmid.fasta --query-id KPC33_p1 \
+  --reference ref1.fasta --reference ref2.fasta \
+  --db-dir /path/to/dbs \
+  --out-dir ./output \
+  --single-html
+```
+
+If running from a non-editable install (i.e. `mapper.html`'s `css/`/`js/`
+aren't three directories up from this package), pass `--project-root
+/path/to/plasmid_mapper` explicitly.
+
 ### Per-database identity/coverage thresholds
 
 Each database has its own identity/coverage threshold an ORF's best hit
@@ -117,6 +151,8 @@ uniprot: { min_identity: 30, min_coverage: 40 }
   plain `blastn` or `dc-megablast` instead of `megablast` if your reference
   plasmids are more distantly related than same-species comparisons.
 - `--threads N`
+- `--single-html` / `--project-root PATH`: write a self-contained
+  `plasmid_viewer.html` (see "Single-file output" above).
 
 ## Running the tests
 

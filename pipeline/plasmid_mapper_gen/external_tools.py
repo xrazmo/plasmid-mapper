@@ -28,6 +28,21 @@ def check_tools_on_path(required=REQUIRED_TOOLS, optional=OPTIONAL_TOOLS) -> dic
     return available_optional
 
 
+def require_esbuild():
+    """Only called from the --single-html output path -- esbuild is not
+    needed for ordinary ref_data.js/pl_data.js generation, so it's not in
+    REQUIRED_TOOLS (which would force every user to install it even if
+    they never use --single-html).
+    """
+    if shutil.which("esbuild") is None:
+        raise PipelineError(
+            "--single-html requires esbuild, which was not found on PATH.\n"
+            "Install it (after activating the plasmid-mapper conda env):\n"
+            "    npm install -g esbuild\n"
+            "then re-run this command."
+        )
+
+
 def run(cmd: list, error_context: str) -> subprocess.CompletedProcess:
     """Run a subprocess command, raising PipelineError with the command's
     stderr on failure instead of a raw CalledProcessError traceback.

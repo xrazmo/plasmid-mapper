@@ -9,6 +9,7 @@ dependencies:
   - diamond>=2.1  # used automatically for protein-vs-protein DB searches (CARD/VFDB/BacMet/UniProt) when present; ISfinder always uses BLAST+'s tblastn regardless
   - biopython>=1.79
   - pyyaml>=6.0
+  - nodejs>=20  # build-time only, for esbuild (--single-html output): minifies the tool's own JS into the generated HTML. Never required to open/use that HTML file itself.
   - pip
   - pip:
       - -e .

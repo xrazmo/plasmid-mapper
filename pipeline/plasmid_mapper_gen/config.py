@@ -13,3 +13,5 @@ class RunConfig:
     threads: int = 4
     append: bool = False
     merge_gap_bp: int = 10
+    single_html: bool = False
+    project_root: str = None

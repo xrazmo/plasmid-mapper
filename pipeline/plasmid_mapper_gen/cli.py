@@ -20,6 +20,7 @@ from .assembler.js_writer import (
     write_pl_data_js,
     write_ref_data_js,
 )
+from .assembler.single_html import build_single_html
 from .threshold_config import load_thresholds
 from .utils.errors import PipelineError
 from .utils.fasta import read_single_fasta_record, validate_plasmid_id
@@ -87,7 +88,40 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "rendering a visually noisy break between them (default: 10)"
         ),
     )
+    parser.add_argument(
+        "--single-html",
+        action="store_true",
+        help=(
+            "Also write <out-dir>/plasmid_viewer.html: one self-contained "
+            "HTML file with the project's own CSS/JS inlined (minified via "
+            "esbuild, which must be on PATH -- `npm install -g esbuild`) "
+            "and the generated plasmid data inlined. Open it directly, no "
+            "server or other files needed. Third-party libraries (jQuery/"
+            "Bootstrap/D3/etc.) still load from their CDNs."
+        ),
+    )
+    parser.add_argument(
+        "--project-root",
+        default=None,
+        help=(
+            "Directory containing this project's css/ and js/ (the same "
+            "layout as the repo checkout with mapper.html). Required with "
+            "--single-html; defaults to the plasmid_mapper_gen package's "
+            "own repo checkout location if omitted."
+        ),
+    )
     return parser
+
+
+def _default_project_root() -> str:
+    """Default --project-root for --single-html: assumes this file is at
+    <repo_root>/pipeline/plasmid_mapper_gen/cli.py, the layout of an
+    editable checkout (matches how this project is actually installed --
+    `pip install -e .` per environment.yml). A user running from a
+    different layout (e.g. a non-editable install elsewhere) should pass
+    --project-root explicitly.
+    """
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def run_pipeline(config: RunConfig) -> None:
@@ -262,11 +296,25 @@ def run_pipeline(config: RunConfig) -> None:
         write_pl_data_js(map_data, pl_data_path)
         print(f"Wrote {pl_data_path}", file=sys.stderr)
     else:
+        map_data = {}
         print(
             "No --reference FASTAs given; skipping pairwise BLASTN "
             "(pl_data.js not written).",
             file=sys.stderr,
         )
+
+    if config.single_html:
+        project_root = config.project_root or _default_project_root()
+        single_html_path = os.path.join(config.out_dir, "plasmid_viewer.html")
+        print(f"Building self-contained {single_html_path} ...", file=sys.stderr)
+        build_single_html(
+            new_contig_ref,
+            map_data,
+            title=config.query_id,
+            out_path=single_html_path,
+            project_root=project_root,
+        )
+        print(f"Wrote {single_html_path}", file=sys.stderr)
 
 
 def main(argv=None) -> int:
@@ -283,6 +331,8 @@ def main(argv=None) -> int:
         threads=args.threads,
         append=args.append,
         merge_gap_bp=args.merge_gap_bp,
+        single_html=args.single_html,
+        project_root=args.project_root,
     )
     try:
         run_pipeline(config)

@@ -22,4 +22,4 @@ test = ["pytest>=7.0"]
 include = ["plasmid_mapper_gen*"]
 
 [tool.setuptools.package-data]
-plasmid_mapper_gen = ["db_thresholds.yaml"]
+plasmid_mapper_gen = ["db_thresholds.yaml", "assembler/single_html_template.html"]
