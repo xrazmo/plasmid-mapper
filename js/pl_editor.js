@@ -391,6 +391,12 @@ function renderAnnotationControls(qryId, effectiveAnnotations) {
     container.id = containerId;
     container.className = 'mt-2 mb-2';
 
+    // Sectioned layout (mapper.html, Step 5 reorg) provides a dedicated
+    // mount point inside the "Zoom bands" card; older/simpler layouts
+    // (e.g. examples/KPC33_p1/kpc33_viewer.html, not yet reorganized)
+    // fall back to inserting the controls directly above #main-section.
+    var mount = document.getElementById('annotation-controls-mount');
+
     var toggleBtn = document.createElement('button');
     toggleBtn.type = 'button';
     toggleBtn.className = 'btn btn-sm btn-outline-primary mr-2';
@@ -426,8 +432,12 @@ function renderAnnotationControls(qryId, effectiveAnnotations) {
     });
     container.appendChild(list);
 
-    var mainSection = document.getElementById('main-section');
-    mainSection.parentNode.insertBefore(container, mainSection);
+    if (mount) {
+        mount.appendChild(container);
+    } else {
+        var mainSection = document.getElementById('main-section');
+        mainSection.parentNode.insertBefore(container, mainSection);
+    }
 }
 
 // Renders freeform labels (added via "Add label", not tied to any ORF) as
