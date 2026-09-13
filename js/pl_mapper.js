@@ -556,16 +556,27 @@ $(document).ready(function() {
                 var midPoint = d.sidx + Math.abs(d.sidx - d.eidx),
                     x = (secondRadius + 18) * Math.cos(tcoord2Angle(midPoint) - half_pi),
                     y = (secondRadius + 18) * Math.sin(tcoord2Angle(midPoint) - half_pi);
+                var labelOverride = d._labelOverride;
+                var initRotation = 0;
+                if (labelOverride && typeof labelOverride.x === 'number') {
+                    x = labelOverride.x;
+                    y = labelOverride.y;
+                    initRotation = labelOverride.rotation || 0;
+                }
                 textg.append('g')
                     .append('text')
                     .attr('id', 'txt-' + d.id)
                     .attr('x', x)
                     .attr('y', y)
-                    .attr('transform', 'rotate(0,' + x + ',' + y + ')')
+                    .attr('transform', 'rotate(' + initRotation + ',' + x + ',' + y + ')')
                     .style("font-size", "8px")
                     .style('font-weight', 600)
                     .style('font-family', 'Helvetica')
-                    .text(d.dscr.replace('family transposase', ''))
+                    .text((labelOverride && labelOverride.text) || d.dscr.replace('family transposase', ''))
+                    .on("dblclick", function(event) {
+                        event.preventDefault();
+                        openLabelTextEditor(this, qryId, d.id, $(this).text());
+                    })
                     .on("mousedown", function(event) {
                         event.preventDefault();
 
@@ -578,6 +589,11 @@ $(document).ready(function() {
                         this.style.cursor = "grab";
                         d3.select(this).style('font-size', '8px');
 
+                        var finalX = parseFloat($(this).attr('x')),
+                            finalY = parseFloat($(this).attr('y'));
+                        var tr = d3.select(this).attr("transform");
+                        var rotation = parseFloat(tr.replace('rotate(', '').split(',')[0]) || 0;
+                        PlasmidMapperEdits.setLabelPosition(qryId, 'orf-' + d.id, finalX, finalY, rotation);
                     })
                     .on("mousemove", function(event) {
                         event.preventDefault();
@@ -624,8 +640,10 @@ $(document).ready(function() {
 
                         var tr = d3.select(this).attr("transform");
                         pp = tr.replace('rotate(', '').replace(');', '').split(',')
-                        $(this).attr('transform', 'rotate(' + (parseInt(pp[0]) + sig * 5) +
+                        var newRotation = parseInt(pp[0]) + sig * 5;
+                        $(this).attr('transform', 'rotate(' + newRotation +
                             ',' + x1 + ',' + y1 + ')');
+                        PlasmidMapperEdits.setLabelPosition(qryId, 'orf-' + d.id, x1, y1, newRotation);
                     });
 
             }

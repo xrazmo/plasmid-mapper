@@ -219,3 +219,64 @@ var PlasmidMapperEdits = (function() {
         getEntry: ensurePlasmidEntry
     };
 })();
+
+// Inline text editing for a label: double-click opens a foreignObject-
+// hosted <input> positioned over the label (SVG has no native editable
+// text primitive), pre-filled with the current text. Enter/blur commits
+// the change via PlasmidMapperEdits and re-renders; Escape cancels.
+//
+// labelKey is the full edits-overlay key (e.g. "orf-63908" or a
+// freeform-<uuid> key) for freeform labels, or just the numeric ORF id
+// for ORF-backed labels (setLabelText below normalizes this).
+function openLabelTextEditor(textEl, qryId, orfOrLabelId, currentText, onFreeform) {
+    var svg = document.getElementById('main-svg');
+    var textNode = d3.select(textEl);
+    var bbox = textEl.getBBox();
+    var ctm = textEl.getScreenCTM();
+    var svgRect = svg.getBoundingClientRect();
+
+    var fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    var padding = 4;
+    fo.setAttribute('x', bbox.x - padding);
+    fo.setAttribute('y', bbox.y - padding);
+    fo.setAttribute('width', Math.max(120, bbox.width + padding * 2));
+    fo.setAttribute('height', bbox.height + padding * 2 + 4);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentText;
+    input.style.width = '100%';
+    input.style.fontSize = '10px';
+    input.style.border = '1px solid #2c7fb8';
+    input.style.boxSizing = 'border-box';
+
+    fo.appendChild(input);
+    textEl.parentNode.appendChild(fo);
+    input.focus();
+    input.select();
+
+    var settled = false;
+
+    function commit() {
+        if (settled) return;
+        settled = true;
+        var newText = input.value;
+        fo.remove();
+        if (newText === currentText) return;
+        var key = onFreeform ? orfOrLabelId : ('orf-' + orfOrLabelId);
+        PlasmidMapperEdits.setLabelText(qryId, key, newText);
+        textNode.text(newText);
+    }
+
+    function cancel() {
+        if (settled) return;
+        settled = true;
+        fo.remove();
+    }
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    input.addEventListener('blur', commit);
+}
