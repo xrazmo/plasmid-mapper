@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "plasmid-mapper-gen"
 version = "0.1.0"
 description = "Generates plasmid_mapper ref_data.js/pl_data.js from query/reference plasmid FASTA files"
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "biopython>=1.79",
