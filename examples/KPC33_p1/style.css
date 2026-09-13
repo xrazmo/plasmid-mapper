@@ -45,6 +45,15 @@ table {
     height: 20px;
 }
 
+.subject-color-inpt {
+    width: 36px;
+    height: 24px;
+    padding: 1px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
 
 /* .e-ring {
     fill: #f0f0f099;

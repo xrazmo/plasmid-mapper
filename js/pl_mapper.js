@@ -38,6 +38,31 @@ $(document).ready(function() {
     // plotLegend's and plotBlastLegend's call sites.
     var ORF_LEGEND_KEY = 'orfLegend';
     var BLAST_LEGEND_KEY = 'blastLegend';
+
+    // Per-reference-plasmid ring/legend color, keyed by the MAP_DATA row
+    // id (e.g. "KPC33_p1$CP104943.1") rather than a positional index --
+    // a positional Color_collection[i % N] lookup meant a ring's color
+    // silently changed if a different subset of rows got checked/
+    // unchecked, and gave no way to let a user pick a specific color for
+    // a specific reference plasmid. Colors are assigned lazily (first
+    // time a key is seen) from Color_collection in first-seen order, so
+    // the default palette is unchanged until the results-table color
+    // picker overrides one.
+    var subjectColors = {};
+    var subjectColorSeq = 0;
+
+    function getSubjectColor(key) {
+        if (!subjectColors[key]) {
+            subjectColors[key] = Color_collection[subjectColorSeq % Color_collection.length];
+            subjectColorSeq += 1;
+        }
+        return subjectColors[key];
+    }
+
+    function setSubjectColor(key, color) {
+        subjectColors[key] = color;
+    }
+
     initForm()
 
     function initForm() {
@@ -68,7 +93,7 @@ $(document).ready(function() {
         var effectiveData = PlasmidMapperEdits.mergeEdits(qryId, Contig_ref[qryId]);
         plotPlasmid(effectiveData, radius);
         renderAnnotationControls(qryId, effectiveData.annotations);
-        var columns = ["#", "select", "qcov", "sseqid", "stitle", 'qseqid']
+        var columns = ["#", "select", "color", "qcov", "sseqid", "stitle", 'qseqid']
 
         $.each(MAP_DATA, function(key, d) {
 
@@ -96,6 +121,10 @@ $(document).ready(function() {
                 }
             }
 
+        });
+        $('.subject-color-inpt').on('input', function() {
+            setSubjectColor($(this).attr('data-subject-id'), $(this).val());
+            $('#uptBtn').trigger('click');
         });
         $.each($('.big-checkbox'), function(i, chk) {
             if (i < 40) {
@@ -446,7 +475,7 @@ $(document).ready(function() {
                 // than a getBBox() measurement pass for a row set whose
                 // count/content varies with the current ring selection.
                 if (subjectName.length > 20) subjectName = subjectName.slice(0, 19) + '…';
-                return { swatchColor: Color_collection[i % Color_collection.length], label: subjectName };
+                return { swatchColor: getSubjectColor(key), label: subjectName };
             });
             plotLegendRect(qryId, BLAST_LEGEND_KEY, rows, 180, 'blastLegendText');
             return;
@@ -536,7 +565,7 @@ $(document).ready(function() {
                         .endAngle(sb))
                     .style('stroke', '#ccc')
                     .style('stroke-width', 0.5)
-                    .style('fill', Color_collection[i])
+                    .style('fill', getSubjectColor(key))
 
                 legend.append("path")
                     .attr('id', 'lgdB-' + key)
@@ -652,7 +681,7 @@ $(document).ready(function() {
 
     }
 
-    function plotBlastRings(data, radius, color_index) {
+    function plotBlastRings(data, radius, subjectKey) {
         var qLen = data.qlen;
         var bl_focus = d3.select('#bl-focus');
         var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, qLen])
@@ -663,7 +692,7 @@ $(document).ready(function() {
             innerR = p_inR + 2,
             outterR = innerR + arcW;
 
-        var cl = Color_collection[color_index % Color_collection.length]
+        var cl = getSubjectColor(subjectKey)
 
         $.each(data.ranges, function(i, rng) {
 
@@ -1186,8 +1215,8 @@ $(document).ready(function() {
             .data(function(row) {
 
                 return columns.map(function(column) {
-                    if (column == "select") {
-                        return { column: "select", id: row['id'] }
+                    if (column == "select" || column == "color") {
+                        return { column: column, id: row['id'] }
                     }
                     return { column: column, value: row[column] };
                 });
@@ -1200,7 +1229,9 @@ $(document).ready(function() {
                 if (d.column == '#') {
                     rownr = rownr + 1
                     return rownr;
-                } else if (d.column == 'sseqid') { return "<a href='https://www.ncbi.nlm.nih.gov/nuccore/" + d.value + "' target='_blank'>" + d.value + "</a>" } else if (d.column == 'select') { return "<input type=\"checkbox\" class=\"big-checkbox\" id=\"" + d.id + "\"></input>" }
+                } else if (d.column == 'sseqid') { return "<a href='https://www.ncbi.nlm.nih.gov/nuccore/" + d.value + "' target='_blank'>" + d.value + "</a>" } else if (d.column == 'select') { return "<input type=\"checkbox\" class=\"big-checkbox\" id=\"" + d.id + "\"></input>" } else if (d.column == 'color') {
+                    return "<input type=\"color\" class=\"subject-color-inpt\" data-subject-id=\"" + d.id + "\" value=\"" + getSubjectColor(d.id) + "\">";
+                }
 
                 return chunkSubstr(d.value, colW);
             });
@@ -1263,7 +1294,7 @@ $(document).ready(function() {
             $.each(selected_alignments, function(i, key) {
                 ringNr += 1
                 exR += controls.radiusStep;
-                plotBlastRings(MAP_DATA[key], exR, i);
+                plotBlastRings(MAP_DATA[key], exR, key);
 
             });
 
