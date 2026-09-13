@@ -600,8 +600,22 @@ function buildOrfPopoverHtml(d) {
 // with re-invoking .popover({...}) with fresh content on a repeat hover
 // of the same element. container:'body' escapes any clipping/stacking
 // context the SVG's own positioning might otherwise impose.
+// Default ORF arrow outline (set where these paths are drawn in
+// pl_mapper.js) -- stashed here so the hover highlight below can restore
+// it exactly on mouseleave rather than guessing/hardcoding a duplicate
+// value that could drift out of sync with the real default.
+var ORF_DEFAULT_STROKE = '#737373';
+var ORF_DEFAULT_STROKE_WIDTH = 0.3;
+var ORF_HOVER_STROKE = '#000';
+var ORF_HOVER_STROKE_WIDTH = 1.2;
+
 function attachOrfTooltip(selection, d) {
     selection.on('mouseenter', function(event) {
+        d3.select(this)
+            .style('stroke', ORF_HOVER_STROKE)
+            .style('stroke-width', ORF_HOVER_STROKE_WIDTH)
+            .raise(); // bring the highlighted outline above neighboring ORFs so it isn't partly covered
+
         $(this).popover({
             placement: 'auto',
             trigger: 'manual',
@@ -612,6 +626,10 @@ function attachOrfTooltip(selection, d) {
         });
         $(this).popover('show');
     }).on('mouseleave', function() {
+        d3.select(this)
+            .style('stroke', ORF_DEFAULT_STROKE)
+            .style('stroke-width', ORF_DEFAULT_STROKE_WIDTH);
+
         $(this).popover('dispose');
     });
 }
