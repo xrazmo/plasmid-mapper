@@ -175,3 +175,49 @@ def test_card_dscr_falls_back_to_raw_description_if_unparseable():
     unparseable_hit = DbHit("CARD", "999", "some other format entirely", 100.0, 100.0)
     result = classify_orf(card_hit=unparseable_hit)
     assert result.dscr == "some other format entirely"
+
+
+def test_isfinder_dscr_truncated_when_long():
+    long_hit = DbHit(
+        "ISFinder", "ISKpn26",
+        "IS6 family transposase ISKpn26, complete insertion sequence description text",
+        99.0, 98.0,
+    )
+    result = classify_orf(isfinder_hit=long_hit)
+    assert len(result.dscr) <= 40
+    assert result.dscr.endswith("…")
+
+
+def test_isfinder_dscr_unchanged_when_short():
+    result = classify_orf(isfinder_hit=ISFINDER_HIT)
+    assert result.dscr == "IS6 family transposase"
+
+
+def test_uniprot_dscr_truncated_when_long():
+    long_hit = DbHit(
+        "UniProt/SwissProt", "P99999",
+        "Multidrug resistance efflux pump outer membrane protein OprM precursor OS=Pseudomonas aeruginosa",
+        80.0, 90.0,
+    )
+    result = classify_orf(uniprot_hit=long_hit)
+    assert len(result.dscr) <= 60
+    assert result.dscr.endswith("…")
+
+
+def test_uniprot_dscr_unchanged_when_short():
+    result = classify_orf(uniprot_hit=UNIPROT_OTHER)
+    assert result.dscr == "WbuC"
+
+
+def test_uniprot_keyword_classification_uses_full_untruncated_description():
+    # classify_by_keyword() must see the full description (e.g. to find
+    # "integrase" past the 60-char truncation point), even though the
+    # returned dscr field itself is shortened.
+    long_virulence_hit = DbHit(
+        "UniProt/SwissProt", "P11111",
+        "Uncharacterized secreted protein possibly involved in adhesin-mediated hemolysin activity",
+        85.0, 90.0,
+    )
+    result = classify_orf(uniprot_hit=long_virulence_hit)
+    assert result.type == "virulence"
+    assert result.dscr.endswith("…")

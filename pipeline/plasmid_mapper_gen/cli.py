@@ -20,6 +20,7 @@ from .assembler.js_writer import (
     write_pl_data_js,
     write_ref_data_js,
 )
+from .threshold_config import load_thresholds
 from .utils.errors import PipelineError
 from .utils.fasta import read_single_fasta_record, validate_plasmid_id
 
@@ -53,8 +54,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--out-dir", required=True, help="Output directory")
-    parser.add_argument("--min-identity", type=float, default=70.0)
-    parser.add_argument("--min-coverage", type=float, default=70.0)
+    parser.add_argument(
+        "--db-thresholds",
+        dest="db_thresholds_path",
+        default=None,
+        help=(
+            "Path to a YAML file overriding per-database min_identity/"
+            "min_coverage thresholds (see plasmid_mapper_gen/db_thresholds.yaml "
+            "for the bundled defaults and format). May override just the "
+            "databases you want to change; omitted databases keep the "
+            "bundled default."
+        ),
+    )
     parser.add_argument(
         "--blastn-task",
         choices=["megablast", "blastn", "dc-megablast"],
@@ -84,12 +95,25 @@ def run_pipeline(config: RunConfig) -> None:
     os.makedirs(config.out_dir, exist_ok=True)
 
     available_optional = check_tools_on_path()
-    if not available_optional.get("diamond"):
+    use_diamond = bool(available_optional.get("diamond"))
+    if use_diamond:
+        print(
+            "diamond found on PATH; using it for all protein-vs-protein "
+            "database searches (CARD/VFDB/BacMet/UniProt when their "
+            "molecule is protein). ISfinder, and any database whose "
+            "molecule is nucleotide, still use BLAST+'s tblastn -- "
+            "diamond has no equivalent for a protein query against a "
+            "nucleotide subject.",
+            file=sys.stderr,
+        )
+    else:
         print(
             "Note: diamond not found on PATH; using blastp/tblastn "
             "(slower, but no functional difference in results).",
             file=sys.stderr,
         )
+
+    thresholds = load_thresholds(config.db_thresholds_path)
 
     query_record = read_single_fasta_record(config.query_fasta)
     qlen = len(query_record.seq)
@@ -112,6 +136,11 @@ def run_pipeline(config: RunConfig) -> None:
         key: db_registry.ensure_blast_db(db, index_dir)
         for key, db in registry.items()
     }
+    diamond_prefixes = {
+        key: db_registry.ensure_diamond_db(db, index_dir, config.threads)
+        for key, db in registry.items()
+        if use_diamond and db.molecule == "prot"
+    }
 
     orf_records = []
     for i, orf in enumerate(orfs):
@@ -119,28 +148,54 @@ def run_pipeline(config: RunConfig) -> None:
         with open(query_faa_path, "w") as f:
             f.write(f">{orf.locus_tag}\n{orf.protein_seq}\n")
 
+        card_min_identity, card_min_coverage = thresholds["card"]
+        isfinder_min_identity, isfinder_min_coverage = thresholds["isfinder"]
+        vfdb_min_identity, vfdb_min_coverage = thresholds["vfdb"]
+        bacmet_min_identity, bacmet_min_coverage = thresholds["bacmet"]
+        uniprot_min_identity, uniprot_min_coverage = thresholds["uniprot"]
+
         card_hit = (
-            search_card(query_faa_path, db_prefixes["card"], registry["card"].molecule, config.min_identity, config.min_coverage)
+            search_card(
+                query_faa_path, db_prefixes["card"], registry["card"].molecule,
+                card_min_identity, card_min_coverage,
+                use_diamond=use_diamond, diamond_db_prefix=diamond_prefixes.get("card"),
+                threads=config.threads,
+            )
             if "card" in db_prefixes
             else None
         )
         isfinder_hit = (
-            search_isfinder(query_faa_path, db_prefixes["isfinder"], config.min_identity, config.min_coverage)
+            search_isfinder(query_faa_path, db_prefixes["isfinder"], isfinder_min_identity, isfinder_min_coverage)
             if "isfinder" in db_prefixes
             else None
         )
         vfdb_hit = (
-            search_vfdb(query_faa_path, db_prefixes["vfdb"], registry["vfdb"].molecule, config.min_identity, config.min_coverage)
+            search_vfdb(
+                query_faa_path, db_prefixes["vfdb"], registry["vfdb"].molecule,
+                vfdb_min_identity, vfdb_min_coverage,
+                use_diamond=use_diamond, diamond_db_prefix=diamond_prefixes.get("vfdb"),
+                threads=config.threads,
+            )
             if "vfdb" in db_prefixes
             else None
         )
         bacmet_hit = (
-            search_bacmet(query_faa_path, db_prefixes["bacmet"], registry["bacmet"].molecule, config.min_identity, config.min_coverage)
+            search_bacmet(
+                query_faa_path, db_prefixes["bacmet"], registry["bacmet"].molecule,
+                bacmet_min_identity, bacmet_min_coverage,
+                use_diamond=use_diamond, diamond_db_prefix=diamond_prefixes.get("bacmet"),
+                threads=config.threads,
+            )
             if "bacmet" in db_prefixes
             else None
         )
         uniprot_hit = (
-            search_uniprot(query_faa_path, db_prefixes["uniprot"], registry["uniprot"].molecule, config.min_identity, config.min_coverage)
+            search_uniprot(
+                query_faa_path, db_prefixes["uniprot"], registry["uniprot"].molecule,
+                uniprot_min_identity, uniprot_min_coverage,
+                use_diamond=use_diamond, diamond_db_prefix=diamond_prefixes.get("uniprot"),
+                threads=config.threads,
+            )
             if "uniprot" in db_prefixes
             else None
         )
@@ -223,8 +278,7 @@ def main(argv=None) -> int:
         reference_fastas=args.references,
         db_dir=args.db_dir,
         out_dir=args.out_dir,
-        min_identity=args.min_identity,
-        min_coverage=args.min_coverage,
+        db_thresholds_path=args.db_thresholds_path,
         blastn_task=args.blastn_task,
         threads=args.threads,
         append=args.append,

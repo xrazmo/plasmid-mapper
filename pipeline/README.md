@@ -11,10 +11,16 @@ conda env create -f environment.yml
 conda activate plasmid-mapper
 ```
 
-This installs Prokka, NCBI BLAST+, and the `plasmid-mapper-gen` command.
-(`diamond` is not required — BLAST's own `blastp`/`tblastn` are used
-instead; if you have `diamond` installed separately it is not currently
-used, but nothing breaks either way.)
+This installs Prokka, NCBI BLAST+, `diamond`, and the `plasmid-mapper-gen`
+command. `diamond` is used automatically whenever it is on `PATH` for any
+protein-vs-protein database search (CARD/VFDB/BacMet/UniProt, whenever
+that database's FASTA is protein) — it has no equivalent for a protein
+query against a nucleotide subject, so ISfinder (always nucleotide) and
+any nucleotide-molecule CARD/VFDB/BacMet release still use BLAST+'s
+`tblastn` regardless. If `diamond` is missing, the pipeline falls back to
+`blastp`/`tblastn` for everything with no functional difference in
+results, just slower — this matters most for UniProt/SwissProt, by far
+the largest of the five databases.
 
 ## Reference databases
 
@@ -76,11 +82,37 @@ Each `--query`/`--reference` FASTA file must contain exactly one sequence.
 Query IDs may only contain letters, digits, `.`, `_`, `-` (no `$`, which is
 reserved as the query/subject separator in `pl_data.js`'s keys).
 
+### Per-database identity/coverage thresholds
+
+Each database has its own identity/coverage threshold an ORF's best hit
+must clear to be classified via that tier (otherwise it falls through to
+the next one). Defaults live in
+[`plasmid_mapper_gen/db_thresholds.yaml`](plasmid_mapper_gen/db_thresholds.yaml):
+
+| Database | min_identity | min_coverage |
+|---|---|---|
+| CARD | 70 | 70 |
+| ISfinder | 70 | 70 |
+| VFDB | 70 | 70 |
+| BacMet | 70 | 70 |
+| UniProt/SwissProt | 40 | 50 |
+
+CARD/ISfinder/VFDB/BacMet stay strict, since a false-positive resistance/
+virulence/IS/biocide-metal call is worse than a missed one. UniProt is
+deliberately looser — it's the last fallback before "hypothetical", so a
+weaker but real homology hit there is more useful than no annotation.
+
+Override any subset of these with `--db-thresholds path/to/file.yaml`
+(same format as the bundled file — you only need to include the
+databases you want to change; anything omitted keeps its default):
+
+```yaml
+uniprot: { min_identity: 30, min_coverage: 40 }
+```
+
 ### Useful flags
 
-- `--min-identity` / `--min-coverage` (default 70/70): thresholds an ORF's
-  best database hit must clear to be classified via that database, instead
-  of falling through to the next tier.
+- `--db-thresholds PATH`: override per-database thresholds (see above).
 - `--blastn-task megablast|blastn|dc-megablast` (default `megablast`): use
   plain `blastn` or `dc-megablast` instead of `megablast` if your reference
   plasmids are more distantly related than same-species comparisons.

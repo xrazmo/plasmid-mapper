@@ -1,4 +1,4 @@
-from .blast_search import best_hit_against_db
+from .blast_search import best_hit_against_db, best_hit_against_db_diamond
 
 # Ordered by specificity: checked top-to-bottom, first match wins. A
 # maintainable single list rather than scattered inline string checks, so
@@ -27,7 +27,21 @@ _KEYWORD_RULES = [
 ]
 
 
-def search_uniprot(query_faa_path, db_prefix, molecule, min_identity, min_coverage):
+def search_uniprot(
+    query_faa_path, db_prefix, molecule, min_identity, min_coverage,
+    use_diamond=False, diamond_db_prefix=None, threads=4,
+):
+    """UniProt/SwissProt is always protein. Since it is by far the largest
+    of the 5 databases (500k+ sequences), it is the search this benefits
+    from diamond the most -- but the dispatch still follows molecule, for
+    consistency with the other search_* functions and in case a
+    differently-prepared --db-dir ever points uniprot at something else.
+    """
+    if molecule == "prot" and use_diamond:
+        return best_hit_against_db_diamond(
+            query_faa_path, diamond_db_prefix, "UniProt/SwissProt",
+            min_identity, min_coverage, threads,
+        )
     program = "blastp" if molecule == "prot" else "tblastn"
     return best_hit_against_db(
         query_faa_path,

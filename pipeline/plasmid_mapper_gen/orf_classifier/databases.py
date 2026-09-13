@@ -75,6 +75,41 @@ def ensure_blast_db(db: ReferenceDatabase, index_dir: str) -> str:
     return db_prefix
 
 
+def ensure_diamond_db(db: ReferenceDatabase, index_dir: str, threads: int = 4) -> str:
+    """Ensure a diamond index for `db` exists under index_dir, building it
+    from the raw FASTA on first use if needed. Returns the diamond DB
+    path (without the .dmnd extension, which `diamond` appends itself) to
+    pass to -d/--db.
+
+    Only ever called for molecule == "prot" databases: diamond has no
+    tblastn equivalent (protein query vs six-frame-translated nucleotide
+    subject), so a nucleotide-molecule database (ISfinder always; CARD/
+    VFDB/BacMet sometimes, depending on release) must keep using BLAST+'s
+    tblastn regardless of whether diamond is installed. Callers are
+    responsible for checking db.molecule == "prot" before calling this.
+    """
+    if not os.path.exists(db.fasta_path):
+        raise PipelineError(
+            f"Reference database FASTA not found for {db.name}: {db.fasta_path}\n"
+            "See pipeline/README.md for how to obtain/prepare this database."
+        )
+
+    os.makedirs(index_dir, exist_ok=True)
+    db_prefix = os.path.join(index_dir, os.path.basename(db.fasta_path) + ".dmnd_idx")
+    if not os.path.exists(db_prefix + ".dmnd"):
+        run(
+            [
+                "diamond", "makedb",
+                "--in", db.fasta_path,
+                "--db", db_prefix,
+                "--threads", str(threads),
+                "--quiet",
+            ],
+            error_context=f"Building diamond database for {db.name}",
+        )
+    return db_prefix
+
+
 def build_registry(db_dir: str) -> dict:
     """Build the standard 5-database registry from a directory convention:
     <db_dir>/card.fasta, isfinder.fasta, vfdb.fasta, bacmet.fasta,

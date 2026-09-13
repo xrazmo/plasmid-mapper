@@ -16,6 +16,13 @@ from .uniprot import classify_by_keyword
 _CARD_NAME_RE = re.compile(r"Name:([^|]+)")
 _CARD_ARO_GENE_RE = re.compile(r"ARO:\d+\|([^\[|]+?)\s*(?:\[|$)")
 
+# ISfinder/UniProt headers have no structured short-name field to extract
+# (unlike CARD's ARO-tagged format), so their descriptions are just capped
+# at a fixed length instead -- a plain safety net so the ORF popover/label
+# text stays readable rather than showing a full raw BLAST subject title.
+_ISFINDER_DESCRIPTION_MAX_LEN = 40
+_UNIPROT_DESCRIPTION_MAX_LEN = 60
+
 
 @dataclass
 class OrfClassification:
@@ -45,6 +52,25 @@ def _card_short_name(description: str) -> str:
     if match:
         return match.group(1).strip()
     return description
+
+
+def _truncate(description: str, max_len: int) -> str:
+    """Cap a raw BLAST subject title at max_len characters so it stays
+    readable in a popover/label, ending in an ellipsis if it was cut.
+    Descriptions already at or under the cap are returned unchanged.
+    """
+    stripped = description.strip()
+    if len(stripped) <= max_len:
+        return stripped
+    return stripped[: max_len - 1].rstrip() + "…"
+
+
+def _isfinder_short_description(description: str) -> str:
+    return _truncate(description, _ISFINDER_DESCRIPTION_MAX_LEN)
+
+
+def _uniprot_short_description(description: str) -> str:
+    return _truncate(description, _UNIPROT_DESCRIPTION_MAX_LEN)
 
 
 def classify_orf(card_hit=None, isfinder_hit=None, vfdb_hit=None, bacmet_hit=None, uniprot_hit=None):
@@ -81,7 +107,7 @@ def classify_orf(card_hit=None, isfinder_hit=None, vfdb_hit=None, bacmet_hit=Non
             refprotien=isfinder_hit.subject_id,
             idty=isfinder_hit.pident,
             cov=isfinder_hit.coverage,
-            dscr=isfinder_hit.description,
+            dscr=_isfinder_short_description(isfinder_hit.description),
         )
     if vfdb_hit is not None:
         return OrfClassification(
@@ -108,7 +134,7 @@ def classify_orf(card_hit=None, isfinder_hit=None, vfdb_hit=None, bacmet_hit=Non
             refprotien=uniprot_hit.subject_id,
             idty=uniprot_hit.pident,
             cov=uniprot_hit.coverage,
-            dscr=uniprot_hit.description,
+            dscr=_uniprot_short_description(uniprot_hit.description),
         )
     return OrfClassification(
         type="hypothetical",

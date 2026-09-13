@@ -9,6 +9,7 @@ description = "Generates plasmid_mapper ref_data.js/pl_data.js from query/refere
 requires-python = ">=3.10"
 dependencies = [
     "biopython>=1.79",
+    "PyYAML>=6.0",
 ]
 
 [project.scripts]
@@ -19,3 +20,6 @@ test = ["pytest>=7.0"]
 
 [tool.setuptools.packages.find]
 include = ["plasmid_mapper_gen*"]
+
+[tool.setuptools.package-data]
+plasmid_mapper_gen = ["db_thresholds.yaml"]

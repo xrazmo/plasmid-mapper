@@ -1,0 +1,13 @@
+# Default per-database identity/coverage thresholds an ORF's best hit must
+# clear to be classified via that database (see threshold_config.py).
+#
+# CARD/ISfinder/VFDB/BacMet stay strict (70/70): a false-positive
+# resistance/virulence/IS/biocide-metal call is a much worse outcome than
+# a missed one. UniProt/SwissProt is deliberately looser (40/50): it is
+# the last fallback tier before "hypothetical", so a weaker but plausible
+# homology hit there is more useful than no annotation at all.
+card:     { min_identity: 70, min_coverage: 70 }
+isfinder: { min_identity: 70, min_coverage: 70 }
+vfdb:     { min_identity: 70, min_coverage: 70 }
+bacmet:   { min_identity: 70, min_coverage: 70 }
+uniprot:  { min_identity: 40, min_coverage: 50 }

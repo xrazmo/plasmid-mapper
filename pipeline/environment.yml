@@ -6,7 +6,9 @@ dependencies:
   - python>=3.10
   - prokka>=1.14.6  # older prokka (e.g. 1.13) misparses modern blastp version strings (e.g. "2.17") as too old
   - blast>=2.12
+  - diamond>=2.1  # used automatically for protein-vs-protein DB searches (CARD/VFDB/BacMet/UniProt) when present; ISfinder always uses BLAST+'s tblastn regardless
   - biopython>=1.79
+  - pyyaml>=6.0
   - pip
   - pip:
       - -e .
