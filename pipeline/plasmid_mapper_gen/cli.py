@@ -64,6 +64,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Merge into an existing ref_data.js in --out-dir instead of overwriting",
     )
+    parser.add_argument(
+        "--merge-gap-bp",
+        type=int,
+        default=10,
+        help=(
+            "Merge adjacent BLASTN HSPs separated by a query gap smaller than "
+            "this (a small indel) into one comparison ring segment instead of "
+            "rendering a visually noisy break between them (default: 10)"
+        ),
+    )
     return parser
 
 
@@ -177,6 +187,7 @@ def run_pipeline(config: RunConfig) -> None:
             config.out_dir,
             config.blastn_task,
             config.threads,
+            config.merge_gap_bp,
         )
         map_data = build_map_data_entries(config.query_id, comparisons)
         pl_data_path = os.path.join(config.out_dir, "pl_data.js")
@@ -204,6 +215,7 @@ def main(argv=None) -> int:
         blastn_task=args.blastn_task,
         threads=args.threads,
         append=args.append,
+        merge_gap_bp=args.merge_gap_bp,
     )
     try:
         run_pipeline(config)

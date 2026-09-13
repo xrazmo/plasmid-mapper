@@ -14,6 +14,7 @@ def run_pairwise_blastn(
     out_dir: str,
     blastn_task: str = "megablast",
     threads: int = 4,
+    merge_gap_bp: int = 10,
 ):
     """Run BLASTN of the query plasmid against each reference plasmid FASTA
     in turn, returning a list of SubjectComparison objects (one or more per
@@ -53,7 +54,7 @@ def run_pairwise_blastn(
             ],
             error_context=f"BLASTN of {query_id} against {reference_fasta}",
         )
-        comparisons = parse_blastn_output(result.stdout, qlen, subject_titles)
+        comparisons = parse_blastn_output(result.stdout, qlen, subject_titles, merge_gap_bp)
         all_comparisons.extend(comparisons)
 
     return all_comparisons

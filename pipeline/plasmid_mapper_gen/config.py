@@ -13,3 +13,4 @@ class RunConfig:
     blastn_task: str = "megablast"
     threads: int = 4
     append: bool = False
+    merge_gap_bp: int = 10

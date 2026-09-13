@@ -2,6 +2,13 @@ from plasmid_mapper_gen.orf_classifier.blast_search import DbHit
 from plasmid_mapper_gen.orf_classifier.merge import classify_orf
 
 CARD_HIT = DbHit("CARD", "42734", "MCR-9", 100.0, 100.0)
+CARD_HIT_RAW_ARO_HEADER = DbHit(
+    "CARD",
+    "3322",
+    "ARO:3004623|ID:3322|Name:AAC(3)-IId|NCBI:EU022314.1",
+    100.0,
+    100.0,
+)
 BACMET_HIT = DbHit(
     "biocide and metal resistance database", "BAC123", "mercury resistance protein", 95.0, 90.0
 )
@@ -80,3 +87,17 @@ def test_no_hit_anywhere_is_hypothetical():
     assert result.type == "hypothetical"
     assert result.dscr == "hypothetical protein"
     assert result.dbname == ""
+
+
+def test_card_dscr_extracts_short_name_from_raw_aro_header():
+    # Real CARD FASTA headers are pipe-delimited ARO identifier strings,
+    # not human-readable descriptions like BacMet/UniProt/ISfinder already
+    # provide -- dscr should show just the gene name, not the raw header.
+    result = classify_orf(card_hit=CARD_HIT_RAW_ARO_HEADER)
+    assert result.dscr == "AAC(3)-IId"
+
+
+def test_card_dscr_falls_back_to_raw_description_if_unparseable():
+    unparseable_hit = DbHit("CARD", "999", "some other format entirely", 100.0, 100.0)
+    result = classify_orf(card_hit=unparseable_hit)
+    assert result.dscr == "some other format entirely"

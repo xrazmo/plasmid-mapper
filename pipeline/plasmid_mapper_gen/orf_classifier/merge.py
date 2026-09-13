@@ -1,6 +1,9 @@
+import re
 from dataclasses import dataclass
 
 from .uniprot import classify_by_keyword
+
+_CARD_NAME_RE = re.compile(r"Name:([^|]+)")
 
 
 @dataclass
@@ -11,6 +14,20 @@ class OrfClassification:
     idty: float
     cov: float
     dscr: str
+
+
+def _card_short_name(description: str) -> str:
+    """CARD's FASTA header is a pipe-delimited ARO identifier string, e.g.
+    "ARO:3004623|ID:3322|Name:AAC(3)-IId|NCBI:EU022314.1" -- not a
+    human-readable product description like BacMet/UniProt/ISfinder
+    headers already are. Extract just the gene/allele name so labels in
+    the rendered figure read "AAC(3)-IId" instead of the raw header.
+    Falls back to the raw description if the pattern doesn't match (e.g.
+    a differently-formatted CARD release), so this never produces an
+    empty label.
+    """
+    match = _CARD_NAME_RE.search(description)
+    return match.group(1) if match else description
 
 
 def classify_orf(card_hit=None, bacmet_hit=None, isfinder_hit=None, uniprot_hit=None):
@@ -33,7 +50,7 @@ def classify_orf(card_hit=None, bacmet_hit=None, isfinder_hit=None, uniprot_hit=
             refprotien=card_hit.subject_id,
             idty=card_hit.pident,
             cov=card_hit.coverage,
-            dscr=card_hit.description,
+            dscr=_card_short_name(card_hit.description),
         )
     if bacmet_hit is not None:
         return OrfClassification(
