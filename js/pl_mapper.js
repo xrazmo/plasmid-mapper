@@ -30,7 +30,8 @@ $(document).ready(function() {
             .attr("transform", "translate(" + size / 2 + "," + size / 2 + ")");
 
         var data = [];
-        plotPlasmid(Contig_ref[qryId], radius);
+        var effectiveData = PlasmidMapperEdits.mergeEdits(qryId, Contig_ref[qryId]);
+        plotPlasmid(effectiveData, radius);
         var columns = ["#", "select", "qcov", "sseqid", "stitle", 'qseqid']
 
         $.each(MAP_DATA, function(key, d) {
