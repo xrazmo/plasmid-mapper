@@ -280,3 +280,152 @@ function openLabelTextEditor(textEl, qryId, orfOrLabelId, currentText, onFreefor
     });
     input.addEventListener('blur', commit);
 }
+
+// Region ("band") selection: click-drag directly on the query ring to pick
+// a start/end coordinate and create a new zoomed-region annotation,
+// generalizing what used to be a hardcoded Contig_ref[...].annotations
+// entry. Only armed while "Add band" mode is toggled on (see
+// renderAnnotationControls) so normal label-dragging elsewhere on the
+// figure isn't accidentally hijacked.
+var regionSelectionArmed = false;
+
+function enableRegionSelection(qryfocus, qryId, qLen, coord2Angle, radius) {
+    var half_pi = Math.PI / 2;
+    // The visible ring path is only 0.1 radius units thick — far too thin
+    // to reliably grab with a pointer. A separate, wider, transparent arc
+    // layered on top is the actual drag target.
+    var hitArc = qryfocus.append('path')
+        .attr('class', 'region-select-hit')
+        .attr('d', d3.arc()
+            .innerRadius(radius - 10)
+            .outerRadius(radius + 10)
+            .startAngle(0)
+            .endAngle(2 * Math.PI))
+        .style('fill', 'transparent')
+        .style('cursor', 'crosshair')
+        .style('pointer-events', function() { return regionSelectionArmed ? 'all' : 'none'; });
+
+    var dragStartCoord = null;
+    var previewPath = null;
+
+    function angleFromPointer(event) {
+        var p = d3.pointer(event, qryfocus.node());
+        var angle = Math.atan2(p[1], p[0]) + half_pi;
+        // Snap floating-point noise near the 0/2*PI seam (the plasmid's 0kb
+        // origin tick) to exactly 0 before wrapping negatives into [0, 2*PI).
+        // Without this, a pointer angle computed as e.g. -5.68e-14 (meant to
+        // be exactly 0) wraps all the way around to ~2*PI, i.e. a coordinate
+        // near qLen instead of near 0 -- exactly the seam a real drag
+        // starting at the plasmid's origin tick would hit.
+        var epsilon = 1e-9;
+        if (Math.abs(angle) < epsilon || Math.abs(angle - 2 * Math.PI) < epsilon) {
+            angle = 0;
+        } else if (angle < 0) {
+            angle += 2 * Math.PI;
+        }
+        return angle;
+    }
+
+    hitArc.on('mousedown', function(event) {
+        if (!regionSelectionArmed) return;
+        event.preventDefault();
+        var angle = angleFromPointer(event);
+        dragStartCoord = Math.round(coord2Angle.invert(angle));
+        previewPath = qryfocus.append('path')
+            .attr('class', 'region-select-preview')
+            .style('fill', '#dd3497')
+            .style('opacity', 0.3);
+    });
+
+    hitArc.on('mousemove', function(event) {
+        if (!regionSelectionArmed || dragStartCoord === null) return;
+        var angle = angleFromPointer(event);
+        var currentCoord = Math.round(coord2Angle.invert(angle));
+        var sidx = Math.min(dragStartCoord, currentCoord);
+        var eidx = Math.max(dragStartCoord, currentCoord);
+        previewPath.attr('d', d3.arc()
+            .innerRadius(radius - 15)
+            .outerRadius(radius + 15)
+            .startAngle(coord2Angle(sidx))
+            .endAngle(coord2Angle(eidx)));
+    });
+
+    function finishDrag(event) {
+        if (!regionSelectionArmed || dragStartCoord === null) return;
+        var angle = angleFromPointer(event);
+        var currentCoord = Math.round(coord2Angle.invert(angle));
+        var sidx = Math.min(dragStartCoord, currentCoord);
+        var eidx = Math.max(dragStartCoord, currentCoord);
+        dragStartCoord = null;
+        if (previewPath) { previewPath.remove(); previewPath = null; }
+        if (eidx - sidx < 10) return; // too small to be an intentional selection
+        PlasmidMapperEdits.addAnnotation(qryId, sidx, eidx);
+        window.rerenderCurrentPlasmid();
+    }
+
+    hitArc.on('mouseup', finishDrag);
+    hitArc.on('mouseleave', function(event) {
+        // Don't cancel on leave; the user may drag slightly outside the
+        // hit-arc's radial bounds while still intending to complete the
+        // selection. Only mouseup (wherever it happens) finalizes it.
+    });
+    d3.select(window).on('mouseup.region-select-' + qryId, function(event) {
+        if (dragStartCoord !== null) finishDrag(event);
+    });
+}
+
+function setRegionSelectionArmed(armed) {
+    regionSelectionArmed = armed;
+    d3.selectAll('.region-select-hit').style('pointer-events', armed ? 'all' : 'none');
+}
+
+// Bootstrap list-group UI (outside the SVG) listing the current plasmid's
+// zoomed-region bands with a delete button each, plus an "Add band" toggle
+// that arms enableRegionSelection's drag gesture on the query ring.
+function renderAnnotationControls(qryId, effectiveAnnotations) {
+    var containerId = 'annotation-controls';
+    var existing = document.getElementById(containerId);
+    if (existing) existing.remove();
+
+    var container = document.createElement('div');
+    container.id = containerId;
+    container.className = 'mt-2 mb-2';
+
+    var toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'btn btn-sm btn-outline-primary mr-2';
+    toggleBtn.textContent = 'Add band';
+    toggleBtn.addEventListener('click', function() {
+        var nowArmed = !regionSelectionArmed;
+        setRegionSelectionArmed(nowArmed);
+        toggleBtn.textContent = nowArmed ? 'Click-drag on the ring, or click here to cancel' : 'Add band';
+        toggleBtn.className = nowArmed
+            ? 'btn btn-sm btn-primary mr-2'
+            : 'btn btn-sm btn-outline-primary mr-2';
+    });
+    container.appendChild(toggleBtn);
+
+    var list = document.createElement('div');
+    list.className = 'list-group list-group-horizontal flex-wrap d-inline-flex';
+    (effectiveAnnotations || []).forEach(function(ann) {
+        var item = document.createElement('span');
+        item.className = 'badge badge-light border mr-1 mb-1 p-2';
+        item.textContent = ann.sidx + '–' + ann.eidx + ' bp ';
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn btn-sm btn-link text-danger p-0 ml-1';
+        del.textContent = '×';
+        del.title = 'Remove this band';
+        del.addEventListener('click', function() {
+            PlasmidMapperEdits.removeAnnotation(qryId, ann.id);
+            window.rerenderCurrentPlasmid();
+        });
+        item.appendChild(del);
+        list.appendChild(item);
+    });
+    container.appendChild(list);
+
+    var mainSection = document.getElementById('main-section');
+    mainSection.parentNode.insertBefore(container, mainSection);
+}

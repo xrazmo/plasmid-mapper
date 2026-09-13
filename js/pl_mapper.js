@@ -32,6 +32,7 @@ $(document).ready(function() {
         var data = [];
         var effectiveData = PlasmidMapperEdits.mergeEdits(qryId, Contig_ref[qryId]);
         plotPlasmid(effectiveData, radius);
+        renderAnnotationControls(qryId, effectiveData.annotations);
         var columns = ["#", "select", "qcov", "sseqid", "stitle", 'qseqid']
 
         $.each(MAP_DATA, function(key, d) {
@@ -435,7 +436,7 @@ $(document).ready(function() {
             ).style('stroke', '#969696')
             .style('stroke-width', '0.3');
 
-
+        enableRegionSelection(qryfocus, qryId, qLen, coord2Angle, radius);
 
         textg = qryfocus.append('g');
 
@@ -835,14 +836,21 @@ $(document).ready(function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    $("#qryselect").on('change', function() {
+    function rerenderCurrentPlasmid() {
         d3.select("#main-svg").selectAll('*').remove();
         d3.select("#tbl-main").selectAll('*').remove();
         clear_canvas();
         selected_alignments = [];
-        qryId = this.value;
         controls = update_page(qryId);
+    }
+    // Exposed globally so pl_editor.js can trigger a full re-render after an
+    // annotation/label edit, reusing the exact same clear-and-redraw path as
+    // the query-select dropdown.
+    window.rerenderCurrentPlasmid = rerenderCurrentPlasmid;
 
+    $("#qryselect").on('change', function() {
+        qryId = this.value;
+        rerenderCurrentPlasmid();
     });
 
 
