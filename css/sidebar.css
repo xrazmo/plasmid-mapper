@@ -1,0 +1,84 @@
+/* Sidebar layout: control cards restacked into a fixed-width left column
+   (instead of a 3-per-row grid above the figure), so the figure gets the
+   full remaining width. Only layout/spacing lives here -- every existing
+   control's id/behavior in js/pl_mapper.js and js/pl_editor.js is
+   untouched, this is a pure re-parenting of the same markup. */
+
+.app-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 0 16px 24px;
+}
+
+.app-sidebar {
+    flex: 0 0 300px;
+    max-width: 300px;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+}
+
+.app-sidebar .card {
+    margin-bottom: 10px;
+}
+
+.app-sidebar .card-header {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+}
+
+.app-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.app-main .table-wrapper-scroll-y {
+    margin-top: 16px;
+}
+
+/* Below ~991px (Bootstrap's lg breakpoint), stack the sidebar above the
+   figure instead of side-by-side -- a fixed 300px column would otherwise
+   crowd out the figure on tablet/phone widths. */
+@media (max-width: 991px) {
+    .app-layout {
+        flex-direction: column;
+    }
+
+    .app-sidebar {
+        flex: 1 1 auto;
+        max-width: none;
+        width: 100%;
+        position: static;
+        max-height: none;
+    }
+}
+
+#style-modal-fonts .style-font-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+#style-modal-fonts .style-font-row label {
+    flex: 0 0 160px;
+    margin-bottom: 0;
+}
+
+#style-modal-fonts .style-font-row select {
+    flex: 1 1 auto;
+}
+
+#style-modal-fonts .style-font-row input[type="number"] {
+    flex: 0 0 70px;
+}
+
+#style-modal-colors .style-color-swatch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 16px 10px 0;
+}

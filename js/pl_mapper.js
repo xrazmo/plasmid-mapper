@@ -14,7 +14,23 @@ $(document).ready(function() {
         radiusStep: -5,
         ringThickness: 4,
         orfLegendStyle: 'curved', // 'curved' | 'rect'
-        blastLegendStyle: 'curved'
+        blastLegendStyle: 'curved',
+        // Per-element font settings, read by every text-drawing call site
+        // below instead of a hardcoded literal. Seeded from the fonts each
+        // element used before this became configurable. The Style modal
+        // (js/pl_style_modal.js) writes into this object and calls
+        // rerenderCurrentPlasmid(), the same mechanism the Settings sidebar
+        // controls already use.
+        fonts: {
+            axisLabel: { family: 'monospace', size: 8 }, // ring tick / mb axis text
+            orfLabel: { family: 'Helvetica', size: 8 }, // on-figure ORF short labels
+            legendText: { family: 'Helvetica', size: 9 }, // ORF-category legend
+            blastLegendText: { family: 'sans-serif', size: 7 } // BLAST-subject legend
+        },
+        // Per-ORF-category fill colors, seeded from ORF_COLOR (js/inline_style.js)
+        // so nothing changes visually until the Style modal is used to
+        // override one. bandHighlight is the new zoom-band background fill.
+        colors: Object.assign({}, ORF_COLOR, { bandHighlight: '#ffe58f' })
     };
     window.PlasmidMapperSettings = renderSettings;
     // Shared string keys for PlasmidMapperEdits.setLegendPosition/
@@ -203,7 +219,8 @@ $(document).ready(function() {
     // {swatchColor, label}; a saved manual position fully replaces the
     // default centered placement (no angle to preserve, unlike curved
     // mode's findClearAngle).
-    function plotLegendRect(qryId, legendKey, rows, boxWidth) {
+    function plotLegendRect(qryId, legendKey, rows, boxWidth, fontKey) {
+        var font = renderSettings.fonts[fontKey] || renderSettings.fonts.legendText;
         var rowHeight = 14, swatchSize = 10, padding = 8;
         var boxHeight = rows.length * rowHeight + padding * 2;
 
@@ -231,8 +248,8 @@ $(document).ready(function() {
         row.append('text')
             .attr('x', swatchSize + 5)
             .attr('y', swatchSize - 1)
-            .style('font-size', '9px')
-            .style('font-family', 'Helvetica')
+            .style('font-size', font.size + 'px')
+            .style('font-family', font.family)
             .text(function(d) { return d.label; });
 
         var saved = PlasmidMapperEdits.getLegendPosition(qryId, legendKey);
@@ -270,9 +287,9 @@ $(document).ready(function() {
         };
         if (renderSettings.orfLegendStyle === 'rect') {
             var rows = Object.keys(orf_labels_for_rect).map(function(txt) {
-                return { swatchColor: ORF_COLOR[orf_labels_for_rect[txt]], label: txt };
+                return { swatchColor: renderSettings.colors[orf_labels_for_rect[txt]], label: txt };
             });
-            plotLegendRect(qryId, ORF_LEGEND_KEY, rows, 160);
+            plotLegendRect(qryId, ORF_LEGEND_KEY, rows, 160, 'legendText');
             return;
         }
 
@@ -372,7 +389,7 @@ $(document).ready(function() {
                 legend.append("path")
                     .attr('class', "orf " + d.kl)
                     .attr("d", getArrowedArc(oR1, oR2, sa, sb, true))
-                    .style('fill', ORF_COLOR[d.kl])
+                    .style('fill', renderSettings.colors[d.kl])
                     .style('stroke', '#737373')
                     .style('stroke-width', 0.3);
 
@@ -389,9 +406,9 @@ $(document).ready(function() {
                     .attr("xlink:href", "#lgd-" + d.kl)
                     .text(txt)
                     .attr("startOffset", "0%")
-                    .style('font-size', '5px')
+                    .style('font-size', renderSettings.fonts.legendText.size + 'px')
                     .style('font-weight', 600)
-                    .style('font-family', 'tahoma');
+                    .style('font-family', renderSettings.fonts.legendText.family);
                 k += d.coef
             });
 
@@ -425,7 +442,7 @@ $(document).ready(function() {
                 if (subjectName.length > 20) subjectName = subjectName.slice(0, 19) + '…';
                 return { swatchColor: Color_collection[i % Color_collection.length], label: subjectName };
             });
-            plotLegendRect(qryId, BLAST_LEGEND_KEY, rows, 180);
+            plotLegendRect(qryId, BLAST_LEGEND_KEY, rows, 180, 'blastLegendText');
             return;
         }
 
@@ -521,9 +538,9 @@ $(document).ready(function() {
                     .attr("xlink:href", "#lgdB-" + key)
                     .text(key.split('$')[1])
                     .attr("startOffset", "0%")
-                    .style('font-size', '5px')
+                    .style('font-size', renderSettings.fonts.blastLegendText.size + 'px')
                     .style('font-weight', 600)
-                    .style('font-family', 'tahoma');
+                    .style('font-family', renderSettings.fonts.blastLegendText.family);
                 k += 1
             });
 
@@ -615,8 +632,8 @@ $(document).ready(function() {
             .attr("xlink:href", "#hp" + data.sseqid)
             .text(data.stitle)
             .attr("startOffset", "0%")
-            .style('font-size', '8px')
-            .style('font-family', 'monospace')
+            .style('font-size', renderSettings.fonts.axisLabel.size + 'px')
+            .style('font-family', renderSettings.fonts.axisLabel.family)
             .style('font-weight', 'bold');
 
     }
@@ -694,9 +711,9 @@ $(document).ready(function() {
             .attr("transform", function(d) { return "rotate(" + (x(d) * 180 / Math.PI - 90) + ")" + "translate(" + y(0) + ",0)"; })
             .style('stroke', '#000')
             .style('stroke-width', '0.2px')
-            .style('font-size', '7px')
+            .style('font-size', renderSettings.fonts.axisLabel.size + 'px')
             .style('font-weight', 600)
-            .style('font-family', 'sans-serif');
+            .style('font-family', renderSettings.fonts.axisLabel.family);
 
         xAxis.append('line')
             .attr("x2", 8);
@@ -780,6 +797,25 @@ $(document).ready(function() {
             var arcSidx = d.sidx - leftExpansion,
                 arcEidx = d.eidx + rightExpansion;
 
+            // A light filled background behind the whole expanded band
+            // (main-ring boundary out through the band's own tick axis and
+            // duplicated ORF arcs) so the zoomed-in region reads as a
+            // single visual unit at a glance, rather than only being
+            // marked by the thin dashed boundary/connector lines. Drawn
+            // first (before the boundary arc, ticks, and ORFs below) so it
+            // paints underneath all of them.
+            qryfocus.append('path')
+                .attr('class', 'band-highlight')
+                .attr('d', d3.arc()
+                    .innerRadius(recR[1])
+                    .outerRadius(bandSecondRadius + 10)
+                    .startAngle(coord2Angle(arcSidx))
+                    .endAngle(coord2Angle(arcEidx))
+                )
+                .style('fill', renderSettings.colors && renderSettings.colors.bandHighlight || '#ffe58f')
+                .style('opacity', 0.25)
+                .style('pointer-events', 'none');
+
             var ticks = d3.range(d.sidx, d.eidx, 1e3)
             var bandTcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx) % pi2, coord2Angle(arcEidx) % pi2]).domain([d.sidx, d.eidx]);
             var tx = d3.scaleBand()
@@ -833,7 +869,7 @@ $(document).ready(function() {
                 .attr('class', "orf " + d.type)
                 .attr("d", getArrowedArc(orfR[0], orfR[1], coord2Angle(d.sidx),
                     coord2Angle(d.eidx), d.strand == 1))
-                .style('fill', ORF_COLOR[d.type])
+                .style('fill', renderSettings.colors[d.type])
                 .style('stroke', '#737373')
                 .style('stroke-width', 0.3);
             attachOrfTooltip(outerOrfArc, d);
@@ -849,7 +885,7 @@ $(document).ready(function() {
                     .attr('data-band-id', bc.ann.id)
                     .attr("d", getArrowedArc(bc.secondRadius + 2, bc.secondRadius + 8, bc.tcoord2Angle(d.sidx),
                         bc.tcoord2Angle(d.eidx), d.strand == 1))
-                    .style('fill', ORF_COLOR[d.type])
+                    .style('fill', renderSettings.colors[d.type])
                     .style('stroke', '#737373')
                     .style('stroke-width', 0.3).on('click', function(event) {
                         var orfId = d3.select(this).attr('data-orf-id');
@@ -906,9 +942,9 @@ $(document).ready(function() {
                     .attr('x', x)
                     .attr('y', y)
                     .attr('transform', 'rotate(' + initRotation + ',' + x + ',' + y + ')')
-                    .style("font-size", "8px")
+                    .style("font-size", renderSettings.fonts.orfLabel.size + "px")
                     .style('font-weight', 600)
-                    .style('font-family', 'Helvetica')
+                    .style('font-family', renderSettings.fonts.orfLabel.family)
                     .style('cursor', 'grab')
                     .text((labelOverride && labelOverride.text) || d.dscr.replace('family transposase', ''))
                     .on("dblclick", function(event) {
@@ -980,7 +1016,7 @@ $(document).ready(function() {
                     })
                     .on('end', function(event) {
                         this.style.cursor = "grab";
-                        d3.select(this).style('font-size', '8px');
+                        d3.select(this).style('font-size', renderSettings.fonts.orfLabel.size + 'px');
 
                         var finalX = parseFloat($(this).attr('x')),
                             finalY = parseFloat($(this).attr('y'));
