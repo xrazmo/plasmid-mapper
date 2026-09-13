@@ -10,9 +10,9 @@ $(document).ready(function() {
     // hardcoded literals; the Settings UI controls write into this object
     // and trigger rerenderCurrentPlasmid().
     var renderSettings = {
-        radius: 260,
-        radiusStep: -5,
-        ringThickness: 4,
+        radius: 200,
+        radiusStep: -14,
+        ringThickness: 10,
         orfLegendStyle: 'curved', // 'curved' | 'rect'
         blastLegendStyle: 'curved',
         // Per-element font settings, read by every text-drawing call site
@@ -323,8 +323,14 @@ $(document).ready(function() {
         // categories out one after another starting at sAngle.
         var totalCoef = 0;
         $.each(orf_labels, function(txt, d) { totalCoef += d.coef; });
-        var requiredArcWidth = totalCoef * (2.7 * deg);
-        var step = 2.7 * deg;
+        // Widened from 2.7deg/unit: at the smaller default radius (200,
+        // was 260) the legend's curved category text was visibly cramped
+        // and overlapping ("AR Insertion sTransp..."). A bigger per-unit
+        // step spreads the same 8 categories across more of the circle so
+        // each curved label has room to read cleanly.
+        var legendStepDeg = 6;
+        var requiredArcWidth = totalCoef * (legendStepDeg * deg);
+        var step = legendStepDeg * deg;
         var radius = controls.radius;
 
         // Default (for a plasmid ID not in the hand-curated lengendAngle
@@ -459,8 +465,16 @@ $(document).ready(function() {
             "s202ECL_2": -45 * deg,
             "s304ECL_3": 210 * deg,
         }
-        var coefLocal = 2, stepLocal = 4.5 * deg;
-        var step = 4.5 * Math.PI / 180;
+        // Widened slightly from 4.5deg/unit, alongside plotLegend's
+        // ORF-category arc -- but NOT by the same ~2.2x factor: this
+        // legend's total width already scales with the number of BLAST-
+        // subject rings selected (requiredArcWidth below), so applying the
+        // same multiplier here blew up into a huge arc for a many-subject
+        // example that collided with plotLegend's own arc. A modest bump
+        // keeps each plasmid-name label readable without that blowup.
+        var blastLegendStepDeg = 5.5;
+        var coefLocal = 2, stepLocal = blastLegendStepDeg * deg;
+        var step = blastLegendStepDeg * deg;
         var radius = controls.radius;
         var r1 = radius + 18, r2 = radius + 28, coef = 2;
 

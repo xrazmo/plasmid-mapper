@@ -1,14 +1,75 @@
-/* Sidebar layout: control cards restacked into a fixed-width left column
-   (instead of a 3-per-row grid above the figure), so the figure gets the
-   full remaining width. Only layout/spacing lives here -- every existing
-   control's id/behavior in js/pl_mapper.js and js/pl_editor.js is
-   untouched, this is a pure re-parenting of the same markup. */
+/* App shell: a topbar + collapsible left sidebar + main figure column.
+   Pattern: the sidebar's width animates between its full 300px and a
+   collapsed 0 (fully hidden, toggled by #sidebarToggleBtn in the topbar),
+   similar to the classic Bootstrap "collapsible sidebar" layout. Only
+   layout/spacing/accent color live here -- every existing control's id/
+   behavior in js/pl_mapper.js and js/pl_editor.js is untouched, this is a
+   pure re-parenting + restyling of the same markup. */
 
+:root {
+    --accent: #1f6f8b;
+    --accent-dark: #164f63;
+    --accent-light: #e8f3f6;
+    --surface: #ffffff;
+    --surface-muted: #f7f9fa;
+    --border: #e1e6e8;
+    --text-muted: #6c757d;
+}
+
+body {
+    background: var(--surface-muted);
+}
+
+/* ---- Topbar ---- */
+.app-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.app-topbar .app-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: #fff;
+}
+
+.app-topbar .app-subtitle {
+    margin: 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+#sidebarToggleBtn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    border-radius: 6px;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#sidebarToggleBtn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Layout ---- */
 .app-layout {
     display: flex;
     align-items: flex-start;
     gap: 16px;
-    padding: 0 16px 24px;
+    padding: 16px;
 }
 
 .app-sidebar {
@@ -18,16 +79,54 @@
     top: 12px;
     max-height: calc(100vh - 24px);
     overflow-y: auto;
+    overflow-x: hidden;
+    transition: flex-basis 0.2s ease, max-width 0.2s ease, opacity 0.15s ease, margin 0.2s ease;
+    opacity: 1;
+}
+
+/* Collapsed state, toggled by JS adding .sidebar-collapsed to .app-layout. */
+.app-layout.sidebar-collapsed .app-sidebar {
+    flex-basis: 0;
+    max-width: 0;
+    opacity: 0;
+    margin-right: -16px;
+    pointer-events: none;
 }
 
 .app-sidebar .card {
     margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .app-sidebar .card-header {
     cursor: pointer;
     font-weight: 600;
-    padding: 0.5rem 0.75rem;
+    padding: 0.55rem 0.85rem;
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+}
+
+.app-sidebar .card-header .fa-question-circle {
+    margin-left: auto;
+}
+
+.app-sidebar .card-header::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    align-self: stretch;
+    margin: -0.55rem 0.6rem -0.55rem -0.85rem;
+    background: var(--accent);
+}
+
+.app-sidebar .card-body {
+    background: var(--surface);
 }
 
 .app-main {
@@ -35,8 +134,48 @@
     min-width: 0;
 }
 
+.app-main #main-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+}
+
 .app-main .table-wrapper-scroll-y {
     margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+/* Accent primary buttons/links so the theme reads as one system rather
+   than default Bootstrap blue everywhere. */
+.btn-info, .btn-primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-info:hover, .btn-primary:hover {
+    background-color: var(--accent-dark);
+    border-color: var(--accent-dark);
+}
+
+.btn-outline-primary {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+a {
+    color: var(--accent);
+}
+
+a:hover {
+    color: var(--accent-dark);
 }
 
 /* Below ~991px (Bootstrap's lg breakpoint), stack the sidebar above the
@@ -53,6 +192,11 @@
         width: 100%;
         position: static;
         max-height: none;
+    }
+
+    .app-layout.sidebar-collapsed .app-sidebar {
+        display: none;
+        margin-right: 0;
     }
 }
 
@@ -81,4 +225,8 @@
     align-items: center;
     gap: 6px;
     margin: 0 16px 10px 0;
+}
+
+.modal-header {
+    background: var(--accent-light);
 }
