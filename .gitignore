@@ -4,3 +4,9 @@ Thumbs.db
 *.swp
 *.bak
 node_modules/
+
+# Python (pipeline/)
+__pycache__/
+*.egg-info/
+.pytest_cache/
+*.pyc

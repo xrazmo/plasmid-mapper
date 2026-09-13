@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plasmid-mapper-gen"
+version = "0.1.0"
+description = "Generates plasmid_mapper ref_data.js/pl_data.js from query/reference plasmid FASTA files"
+requires-python = ">=3.10"
+dependencies = [
+    "biopython>=1.79",
+]
+
+[project.scripts]
+plasmid-mapper-gen = "plasmid_mapper_gen.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["plasmid_mapper_gen*"]
