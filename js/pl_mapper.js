@@ -650,6 +650,8 @@ $(document).ready(function() {
             }
 
         });
+
+        plotFreeformLabels(qryfocus, textg, qryId, data._freeformLabels || []);
     }
 
     function getORFLables(innerRadius, outerRadius, startAngle, endAngle) {
@@ -878,6 +880,13 @@ $(document).ready(function() {
 
         }
 
+        // Labels/leader-lines (inside .qry-focus, appended by plotPlasmid()
+        // before this handler creates #bl-focus/the BLAST legend) must stay
+        // on top so they remain clickable/draggable -- otherwise later-drawn
+        // BLAST ring/legend paths silently absorb pointer events meant for
+        // double-click/drag on a label underneath them in SVG paint order.
+        d3.select('#focus').select('.qry-focus').raise();
+
     });
 
 
@@ -910,6 +919,27 @@ $(document).ready(function() {
             $('#canvas').attr('height', $(this).val() + 'px')
 
         }
+    });
+
+    $('#addLabelBtn').on('click', function(event) {
+        armFreeformLabelPlacement(qryId);
+    });
+
+    $('#exportEditsBtn').on('click', function(event) {
+        PlasmidMapperEdits.exportEdits(qryId);
+    });
+
+    $('#importEditsInput').on('change', function(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+        PlasmidMapperEdits.importEditsFromFile(file, function(err) {
+            if (err) {
+                alert('Could not import edits file: ' + err.message);
+                return;
+            }
+            rerenderCurrentPlasmid();
+        });
+        event.target.value = '';
     });
 
     var qrySelectEl = document.getElementById('qryselect');

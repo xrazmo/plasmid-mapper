@@ -429,3 +429,93 @@ function renderAnnotationControls(qryId, effectiveAnnotations) {
     var mainSection = document.getElementById('main-section');
     mainSection.parentNode.insertBefore(container, mainSection);
 }
+
+// Renders freeform labels (added via "Add label", not tied to any ORF) as
+// text plus a straight leader line from the clicked coordinate to the
+// label's (possibly dragged-away) position. getORFLables/getArrowedArc in
+// pl_mapper.js are not reusable here: they're declared inside that file's
+// $(document).ready(...) closure and never exposed on window, and in any
+// case expect a single (innerRadius, outerRadius, angle) radial geometry,
+// not two arbitrary (x,y) points — a plain two-point line is both correct
+// and simpler for this case. Each freeform label supports the same
+// double-click-to-edit-text and drag interactions as ORF-backed labels,
+// plus a delete ("×", removes it outright rather than reverting to a
+// default, since there is no underlying ORF arrow).
+function plotFreeformLabels(qryfocus, textg, qryId, freeformLabels) {
+    freeformLabels.forEach(function(label) {
+        if (label.pointsTo) {
+            textg.append('line')
+                .attr('class', 'freeform-leader')
+                .attr('x1', label.pointsTo.x)
+                .attr('y1', label.pointsTo.y)
+                .attr('x2', label.x)
+                .attr('y2', label.y)
+                .style('stroke', '#000')
+                .style('stroke-dasharray', '1,1')
+                .style('stroke-width', '0.3');
+        }
+
+        var textEl = textg.append('g')
+            .append('text')
+            .attr('id', 'lbl-' + label.id.replace(/[^a-zA-Z0-9_-]/g, ''))
+            .attr('x', label.x)
+            .attr('y', label.y)
+            .attr('transform', 'rotate(' + (label.rotation || 0) + ',' + label.x + ',' + label.y + ')')
+            .style('font-size', '8px')
+            .style('font-weight', 600)
+            .style('font-family', 'Helvetica')
+            .style('cursor', 'grab')
+            .text(label.text)
+            .on('dblclick', function(event) {
+                event.preventDefault();
+                openLabelTextEditor(this, qryId, label.id, $(this).text(), true);
+            });
+
+        var dragging = false;
+        textEl.on('mousedown', function(event) {
+            event.preventDefault();
+            dragging = true;
+            d3.select(this).style('font-size', '10px');
+        }).on('mouseleave mouseup', function(event) {
+            if (!dragging) return;
+            dragging = false;
+            d3.select(this).style('font-size', '8px');
+            var finalX = parseFloat($(this).attr('x')),
+                finalY = parseFloat($(this).attr('y'));
+            PlasmidMapperEdits.setLabelPosition(qryId, label.id, finalX, finalY, label.rotation || 0);
+        }).on('mousemove', function(event) {
+            if (!dragging) return;
+            var t = d3.pointer(event, qryfocus.node());
+            $(this).attr('x', t[0]).attr('y', t[1]);
+            d3.select(this).attr('transform', 'rotate(' + (label.rotation || 0) + ',' + t[0] + ',' + t[1] + ')');
+        });
+    });
+}
+
+// "Add label" click-to-place mode: armed by the toolbar button in
+// mapper.html, disarmed after one placement (one-shot, re-click the
+// button to add another). On click inside the figure, records the
+// SVG-local coordinate, prompts for the label text inline via the same
+// foreignObject editor used for existing labels, then creates the
+// freeform label and re-renders.
+var freeformPlacementArmed = false;
+
+function armFreeformLabelPlacement(qryId) {
+    freeformPlacementArmed = true;
+    var svg = d3.select('#main-svg');
+    svg.style('cursor', 'crosshair');
+
+    function placementHandler(event) {
+        if (!freeformPlacementArmed) return;
+        freeformPlacementArmed = false;
+        svg.style('cursor', null);
+        svg.on('click.freeform-placement', null);
+
+        var focus = document.getElementById('focus');
+        var pt = d3.pointer(event, focus);
+        var key = PlasmidMapperEdits.addFreeformLabel(qryId, pt[0], pt[1], 'New label');
+        window.rerenderCurrentPlasmid();
+    }
+
+    svg.on('click.freeform-placement', placementHandler);
+}

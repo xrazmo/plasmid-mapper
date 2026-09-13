@@ -52,6 +52,16 @@
                 </div>
 
             </div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <button id="addLabelBtn" type="button" class="btn btn-sm btn-outline-primary mr-2">Add label</button>
+                    <button id="exportEditsBtn" type="button" class="btn btn-sm btn-outline-secondary mr-2">Export edits</button>
+                    <label class="btn btn-sm btn-outline-secondary mb-0" for="importEditsInput">
+                        Import edits
+                        <input type="file" id="importEditsInput" accept="application/json" style="display:none;">
+                    </label>
+                </div>
+            </div>
             <div class="row">
                 <div class="col-12 table-wrapper-scroll-y my-custom-scrollbar ">
                     <table id='tbl-main' class="table table-bordered table-striped table-sm"></table>
