@@ -253,7 +253,13 @@ $(document).ready(function() {
         var rowHeight = 14, swatchSize = 10, padding = 8;
         var boxHeight = rows.length * rowHeight + padding * 2;
 
-        var legend = d3.select('#focus').append('g');
+        // Remove any previously drawn legend for this key before drawing a
+        // new one -- without this, every re-render (including the BLAST
+        // legend's, which redraws on every #uptBtn click, i.e. every color
+        // picker change) appended another copy on top of #focus instead of
+        // replacing it, leaving stacked duplicate legends behind.
+        d3.select('#focus').selectAll('.legend-group-' + legendKey).remove();
+        var legend = d3.select('#focus').append('g').attr('class', 'legend-group-' + legendKey);
 
         legend.append('rect')
             .attr('x', 0).attr('y', 0)
@@ -458,7 +464,10 @@ $(document).ready(function() {
                 .style('stroke-width', '0.5');
         }
 
-        var legend = d3.select('#focus').append('g');
+        // See the matching comment in plotLegendRect(): remove any
+        // previously drawn copy of this legend before appending a new one.
+        d3.select('#focus').selectAll('.legend-group-' + ORF_LEGEND_KEY).remove();
+        var legend = d3.select('#focus').append('g').attr('class', 'legend-group-' + ORF_LEGEND_KEY);
         var saved = PlasmidMapperEdits.getLegendPosition(qryId, ORF_LEGEND_KEY);
         var initialAngle = saved && typeof saved.angleDeg === 'number' ? saved.angleDeg * deg : autoAngle;
         drawAt(initialAngle);
@@ -598,7 +607,13 @@ $(document).ready(function() {
                 .style('stroke-width', '0.5');
         }
 
-        var legend = d3.select('#focus').append('g');
+        // See the matching comment in plotLegendRect(): remove any
+        // previously drawn copy of this legend before appending a new one
+        // -- this legend redraws on every #uptBtn click (every selected-
+        // rings/color-picker change), so without this each click left a
+        // stacked duplicate behind instead of replacing the old one.
+        d3.select('#focus').selectAll('.legend-group-' + BLAST_LEGEND_KEY).remove();
+        var legend = d3.select('#focus').append('g').attr('class', 'legend-group-' + BLAST_LEGEND_KEY);
         var saved = PlasmidMapperEdits.getLegendPosition(qryId, BLAST_LEGEND_KEY);
         var initialAngle = saved && typeof saved.angleDeg === 'number' ? saved.angleDeg * deg : autoAngle;
         drawAt(initialAngle);

@@ -128,23 +128,21 @@
                         </div>
                         <div id="collapse-export" class="collapse show" data-parent="#sidebar-accordion">
                             <div class="card-body">
-                                <div class="form-group row mb-2">
-                                    <label class="col-6 col-form-label col-form-label-sm">Width x Height</label>
-                                    <div class="col-6 d-flex">
+                                <div class="form-group mb-2">
+                                    <label class="col-form-label col-form-label-sm pt-0">Width x Height</label>
+                                    <div class="d-flex">
                                         <input type="text" class="form-control form-control-sm inpt mr-1" id="width-inpt" placeholder="Width" aria-label="Width" value="5000">
                                         <input type="text" class="form-control form-control-sm inpt" placeholder="Height" id="height-inpt" aria-label="Height" value="5000">
                                     </div>
                                 </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-6 col-form-label col-form-label-sm">Format</label>
-                                    <div class="col-6 d-flex">
-                                        <select class="custom-select custom-select-sm mr-1" id="export-format-select">
-                                            <option value="svg" selected>SVG</option>
-                                            <option value="png">PNG</option>
-                                            <option value="jpeg">JPEG</option>
-                                        </select>
-                                        <button id='genBtn' type="button" class="btn btn-sm btn-secondary">Export</button>
-                                    </div>
+                                <div class="form-group mb-0">
+                                    <label class="col-form-label col-form-label-sm pt-0">Format</label>
+                                    <select class="custom-select custom-select-sm mb-2" id="export-format-select">
+                                        <option value="svg" selected>SVG</option>
+                                        <option value="png">PNG</option>
+                                        <option value="jpeg">JPEG</option>
+                                    </select>
+                                    <button id='genBtn' type="button" class="btn btn-sm btn-secondary btn-block">Export</button>
                                 </div>
                             </div>
                         </div>
