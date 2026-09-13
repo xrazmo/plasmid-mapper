@@ -481,24 +481,30 @@ function plotFreeformLabels(qryfocus, textg, qryId, freeformLabels) {
                 openLabelTextEditor(this, qryId, label.id, $(this).text(), true);
             });
 
-        var dragging = false;
-        textEl.on('mousedown', function(event) {
-            event.preventDefault();
-            dragging = true;
-            d3.select(this).style('font-size', '10px');
-        }).on('mouseleave mouseup', function(event) {
-            if (!dragging) return;
-            dragging = false;
-            d3.select(this).style('font-size', '8px');
-            var finalX = parseFloat($(this).attr('x')),
-                finalY = parseFloat($(this).attr('y'));
-            PlasmidMapperEdits.setLabelPosition(qryId, label.id, finalX, finalY, label.rotation || 0);
-        }).on('mousemove', function(event) {
-            if (!dragging) return;
-            var t = d3.pointer(event, qryfocus.node());
-            $(this).attr('x', t[0]).attr('y', t[1]);
-            d3.select(this).attr('transform', 'rotate(' + (label.rotation || 0) + ',' + t[0] + ',' + t[1] + ')');
-        });
+        // d3.drag() instead of hand-rolled mousedown/mousemove/mouseup:
+        // the old mousemove handler was bound to this small <text>
+        // element, so fast pointer movement exiting its hit-area between
+        // frames stopped mousemove from firing until the cursor happened
+        // to re-enter it -- that's what produced jerky/laggy dragging.
+        // d3.drag() captures the pointer for the whole gesture regardless
+        // of element size. .container(qryfocus.node()) keeps drag
+        // coordinates in the same space the old d3.pointer(event,
+        // qryfocus.node()) call used.
+        textEl.call(d3.drag()
+            .container(qryfocus.node())
+            .on('start', function(event) {
+                d3.select(this).style('font-size', '10px');
+            })
+            .on('drag', function(event) {
+                $(this).attr('x', event.x).attr('y', event.y);
+                d3.select(this).attr('transform', 'rotate(' + (label.rotation || 0) + ',' + event.x + ',' + event.y + ')');
+            })
+            .on('end', function(event) {
+                d3.select(this).style('font-size', '8px');
+                var finalX = parseFloat($(this).attr('x')),
+                    finalY = parseFloat($(this).attr('y'));
+                PlasmidMapperEdits.setLabelPosition(qryId, label.id, finalX, finalY, label.rotation || 0);
+            }));
     });
 }
 
@@ -544,30 +550,43 @@ var ORF_CATEGORY_LABELS = {
     other: 'Other', unknown: 'Unknown'
 };
 
+// Builds the popover body HTML for one ORF's hover detail: name,
+// category, identity%, coverage%, source database. Plain string
+// concatenation rather than a templating library -- mustache.js/
+// templates.js are loaded on this page but are dead weight from an
+// unrelated, unused feature (index.html/aln.html's own popover), not
+// worth coupling this to for content this simple.
+function buildOrfPopoverHtml(d) {
+    var category = ORF_CATEGORY_LABELS[d.type] || d.type;
+    var idty = typeof d.idty === 'number' ? d.idty.toFixed(1) + '%' : '—';
+    var cov = typeof d.cov === 'number' ? d.cov.toFixed(1) + '%' : '—';
+    var dbname = d.dbname || '—';
+    return 'Category: ' + category + '<br>' +
+        'Identity: ' + idty + ' &nbsp; Coverage: ' + cov + '<br>' +
+        'Database: ' + dbname;
+}
+
+// Hover detail for an ORF, via Bootstrap 4's popover plugin (already
+// loaded: bootstrap.min.js + popper.min.js) instead of a hand-positioned
+// div, for reliable, theme-consistent styling and positioning.
+// trigger:'manual' + an explicit dispose on mouseleave (rather than
+// trigger:'hover') avoids Bootstrap's own hover-timing logic conflicting
+// with re-invoking .popover({...}) with fresh content on a repeat hover
+// of the same element. container:'body' escapes any clipping/stacking
+// context the SVG's own positioning might otherwise impose.
 function attachOrfTooltip(selection, d) {
     selection.on('mouseenter', function(event) {
-        var tooltip = document.getElementById('orf-tooltip');
-        if (!tooltip) return;
-        var category = ORF_CATEGORY_LABELS[d.type] || d.type;
-        var idty = typeof d.idty === 'number' ? d.idty.toFixed(1) + '%' : '—';
-        var cov = typeof d.cov === 'number' ? d.cov.toFixed(1) + '%' : '—';
-        var dbname = d.dbname || '—';
-        tooltip.innerHTML =
-            '<span class="orf-tooltip-name">' + (d.dscr || 'Unknown') + '</span>' +
-            'Category: ' + category + '<br>' +
-            'Identity: ' + idty + ' &nbsp; Coverage: ' + cov + '<br>' +
-            'Database: ' + dbname;
-        tooltip.style.display = 'block';
-        tooltip.style.left = (event.clientX + 12) + 'px';
-        tooltip.style.top = (event.clientY + 12) + 'px';
-    }).on('mousemove', function(event) {
-        var tooltip = document.getElementById('orf-tooltip');
-        if (!tooltip) return;
-        tooltip.style.left = (event.clientX + 12) + 'px';
-        tooltip.style.top = (event.clientY + 12) + 'px';
+        $(this).popover({
+            placement: 'auto',
+            trigger: 'manual',
+            html: true,
+            container: 'body',
+            title: d.dscr || 'Unknown',
+            content: function() { return buildOrfPopoverHtml(d); }
+        });
+        $(this).popover('show');
     }).on('mouseleave', function() {
-        var tooltip = document.getElementById('orf-tooltip');
-        if (tooltip) tooltip.style.display = 'none';
+        $(this).popover('dispose');
     });
 }
 

@@ -552,13 +552,24 @@ $(document).ready(function() {
             pi2 = 2 * Math.PI,
             orfR = [radius + 3, radius + 8],
             orfLblR = radius - 20;
-        var secondRadius,
-            tcoord2Angle;
         var sColor = '#dd3497';
         var recR = [orfR[0] - 10, radius + 15];
-        secondRadius = recR[0] + 30;
 
-        $.each(data.annotations, function(i, d) {
+        // Each zoom band gets its own stacked-outward secondRadius and its
+        // own tcoord2Angle scale, stored per-band in bandContexts instead
+        // of being reassigned into a single shared variable each loop
+        // iteration. With only one band the old shared-variable approach
+        // happened to work (there was nothing else to collide with); with
+        // two or more, every band's ORFs/labels would render using
+        // whichever band's values were left over after the loop finished.
+        var sortedAnnotations = (data.annotations || []).slice().sort(function(a, b) { return a.sidx - b.sidx; });
+        var bandCount = sortedAnnotations.length;
+        var BAND_STEP = bandCount > 0 ? Math.min(24, Math.max(10, 200 / bandCount)) : 24;
+        var bandContexts = [];
+
+        $.each(sortedAnnotations, function(i, d) {
+
+            var bandSecondRadius = recR[0] + 30 + i * BAND_STEP;
 
             qryfocus.append("path")
                 .attr("d", d3.arc()
@@ -573,17 +584,28 @@ $(document).ready(function() {
 
             // #------------------
             var qryLen = Math.abs(d.sidx - d.eidx);
-            var arcSidx = d.sidx - Math.min(2 * qryLen, qLen / 15),
-                arcEidx = d.eidx + Math.min(2 * qryLen, qLen / 15);
+            var maxExpansion = Math.min(2 * qryLen, qLen / 15);
+            // Clamp each side's expansion against the midpoint gap to the
+            // neighboring band (in sorted order) so one band's "zoomed
+            // canvas" never crosses into an adjacent band's own core
+            // [sidx, eidx] range -- without this, two bands anywhere near
+            // each other would have their tick marks/ORFs/labels overlap
+            // in angle even though they're drawn at different radii.
+            var prevBand = sortedAnnotations[i - 1];
+            var nextBand = sortedAnnotations[i + 1];
+            var leftExpansion = prevBand ? Math.max(0, Math.min(maxExpansion, (d.sidx - prevBand.eidx) / 2)) : maxExpansion;
+            var rightExpansion = nextBand ? Math.max(0, Math.min(maxExpansion, (nextBand.sidx - d.eidx) / 2)) : maxExpansion;
+            var arcSidx = d.sidx - leftExpansion,
+                arcEidx = d.eidx + rightExpansion;
 
             var ticks = d3.range(d.sidx, d.eidx, 1e3)
-            tcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx) % pi2, coord2Angle(arcEidx) % pi2]).domain([d.sidx, d.eidx]);
+            var bandTcoord2Angle = d3.scaleLinear().range([coord2Angle(arcSidx) % pi2, coord2Angle(arcEidx) % pi2]).domain([d.sidx, d.eidx]);
             var tx = d3.scaleBand()
                 .range([coord2Angle(arcSidx), coord2Angle(arcEidx)])
                 .domain(d3.range(d.sidx, d.eidx));
 
             var ty = d3.scaleRadial()
-                .range([secondRadius - 2, secondRadius]) // Domain will be define later.
+                .range([bandSecondRadius - 2, bandSecondRadius]) // Domain will be define later.
                 .domain([0, 2]);
 
             var txAxis = qryfocus.append("g");
@@ -599,22 +621,30 @@ $(document).ready(function() {
                 .style('stroke-width', 0.5);
 
             txAxis.append("path")
-                .attr("d", getUnaligned_deletion(recR[1], secondRadius, coord2Angle(d.sidx + (qryLen / 2)), coord2Angle(arcSidx), coord2Angle(arcEidx)))
+                .attr("d", getUnaligned_deletion(recR[1], bandSecondRadius, coord2Angle(d.sidx + (qryLen / 2)), coord2Angle(arcSidx), coord2Angle(arcEidx)))
                 .style('stroke', sColor)
                 .style("stroke-dasharray", ("1,1"))
                 .style('stroke-width', 1)
                 .attr('fill', 'none');
 
+            // Fall back to a positional id when the annotation has none --
+            // hand-curated data predating the Python pipeline's id-stamping
+            // (js/ref_data.js) has annotations with no `id` field at all,
+            // which would otherwise produce DOM ids like "orf-123-undefined".
+            var bandId = d.id != null ? d.id : ('band-idx-' + i);
+            bandContexts.push({ ann: { sidx: d.sidx, eidx: d.eidx, id: bandId }, secondRadius: bandSecondRadius, tcoord2Angle: bandTcoord2Angle });
+
         });
 
         $.each(data.orfs, function(i, d) {
 
-            var isAnn = false;
-            $.each(data.annotations, function(i, ann) {
-                if (d.eidx >= ann.sidx && d.sidx <= ann.eidx) {
-                    isAnn = true;
-                    return 1;
-                }
+            // An ORF can fall inside more than one zoom band; render it
+            // once per matching band (each band's ring shows what's
+            // actually zoomed there -- dropping it from one would look
+            // like missing data, and "first match" has no principled
+            // meaning since band order is creation order, not spatial).
+            var matchedBands = bandContexts.filter(function(bc) {
+                return d.eidx >= bc.ann.sidx && d.sidx <= bc.ann.eidx;
             });
 
             var outerOrfArc = qryfocus.append("path")
@@ -626,30 +656,44 @@ $(document).ready(function() {
                 .style('stroke-width', 0.3);
             attachOrfTooltip(outerOrfArc, d);
 
-            // Also plot the ORF on the second/inner/zoomed axis
-            if (isAnn) {
+            $.each(matchedBands, function(bandIdx, bc) {
+                // Suffix every id with this band's id so the same ORF
+                // rendered in multiple bands doesn't collide in the DOM.
+                var idSuffix = d.id + '-' + bc.ann.id;
                 var innerOrfArc = qryfocus.append("path")
                     .attr('class', "orf " + d.type)
-                    .attr('id', 'orf-' + d.id)
-                    .attr("d", getArrowedArc(secondRadius + 2, secondRadius + 8, tcoord2Angle(d.sidx),
-                        tcoord2Angle(d.eidx), d.strand == 1))
+                    .attr('id', 'orf-' + idSuffix)
+                    .attr('data-orf-id', d.id)
+                    .attr('data-band-id', bc.ann.id)
+                    .attr("d", getArrowedArc(bc.secondRadius + 2, bc.secondRadius + 8, bc.tcoord2Angle(d.sidx),
+                        bc.tcoord2Angle(d.eidx), d.strand == 1))
                     .style('fill', ORF_COLOR[d.type])
                     .style('stroke', '#737373')
                     .style('stroke-width', 0.3).on('click', function(event) {
-                        var orfid = d3.select(this).attr('id').split('-')[1];
-                        var curStat = d3.select('#line-' + orfid).attr('display')
-                        d3.select('#line-' + orfid).attr('display', curStat == 'none' ? 'block' : 'none');
-                        d3.select('#txt-' + orfid).attr('display', curStat == 'none' ? 'block' : 'none');
+                        var orfId = d3.select(this).attr('data-orf-id');
+                        var bandId = d3.select(this).attr('data-band-id');
+                        var suffix = orfId + '-' + bandId;
+                        var curStat = d3.select('#line-' + suffix).attr('display')
+                        d3.select('#line-' + suffix).attr('display', curStat == 'none' ? 'block' : 'none');
+                        d3.select('#txt-' + suffix).attr('display', curStat == 'none' ? 'block' : 'none');
                     });
                 attachOrfTooltip(innerOrfArc, d);
-            }
+            });
+
             if (d.type == 'hypothetical') return;
 
-            if (isAnn) {
-                orfLblR = secondRadius + 10
+            $.each(matchedBands, function(bandIdx, bc) {
+                var idSuffix = d.id + '-' + bc.ann.id;
+                var secondRadius = bc.secondRadius,
+                    tcoord2Angle = bc.tcoord2Angle;
+
                 textg.append('path')
-                    .attr('id', 'line-' + d.id)
-                    .attr('display', 'none') // hidden by default: color/category coding is enough at a glance; click the ORF arrow to reveal its short label, hover shows full detail
+                    .attr('id', 'line-' + idSuffix)
+                    // Visible by default: a zoom band is the region the
+                    // user is actively curating for a figure, so its ORF
+                    // labels should be visible immediately rather than
+                    // requiring a click to reveal. Still click-to-hide
+                    // via the ORF-arrow handler above if it gets crowded.
                     .attr("d", getORFLables(secondRadius + 8, secondRadius + 18,
                         tcoord2Angle(d.sidx), tcoord2Angle(d.eidx)))
                     .style('stroke', '#000')
@@ -668,54 +712,66 @@ $(document).ready(function() {
                     y = labelOverride.y;
                     initRotation = labelOverride.rotation || 0;
                 }
-                textg.append('g')
+                var labelText = textg.append('g')
                     .append('text')
-                    .attr('id', 'txt-' + d.id)
-                    .attr('display', 'none') // hidden by default, matches '#line-' + d.id above; toggled together by the ORF-arrow click handler
+                    .attr('id', 'txt-' + idSuffix)
                     .attr('x', x)
                     .attr('y', y)
                     .attr('transform', 'rotate(' + initRotation + ',' + x + ',' + y + ')')
                     .style("font-size", "8px")
                     .style('font-weight', 600)
                     .style('font-family', 'Helvetica')
+                    .style('cursor', 'grab')
                     .text((labelOverride && labelOverride.text) || d.dscr.replace('family transposase', ''))
                     .on("dblclick", function(event) {
                         event.preventDefault();
                         openLabelTextEditor(this, qryId, d.id, $(this).text());
                     })
-                    .on("mousedown", function(event) {
-                        event.preventDefault();
+                    .on('mousewheel', function(event) {
 
+                        event.preventDefault();
+                        var sig = event.wheelDelta > 0 ? 1 : -1;
+                        var x1 = parseInt($(this).attr('x')),
+                            y1 = parseInt($(this).attr('y'));
+
+                        var line = qryfocus.select('#line-' + idSuffix);
+                        var sp = line.attr("d").split(" ");
+
+                        var tr = d3.select(this).attr("transform");
+                        pp = tr.replace('rotate(', '').replace(');', '').split(',')
+                        var newRotation = parseInt(pp[0]) + sig * 5;
+                        $(this).attr('transform', 'rotate(' + newRotation +
+                            ',' + x1 + ',' + y1 + ')');
+                        PlasmidMapperEdits.setLabelPosition(qryId, 'orf-' + d.id, x1, y1, newRotation);
+                    });
+
+                // d3.drag() (not hand-rolled mousedown/mousemove/mouseup)
+                // captures the pointer for the whole drag gesture
+                // regardless of which element is under the cursor -- the
+                // old per-element mousemove handler lost events whenever
+                // a fast movement exited the label's small hit-area,
+                // which is what produced the jerky/laggy dragging.
+                // .container(qryfocus.node()) matches the reference-
+                // element convention already used elsewhere in this
+                // codebase (js/pl_editor.js's enableRegionSelection/
+                // plotFreeformLabels both call d3.pointer(event,
+                // qryfocus.node())), so drag coordinates land in the same
+                // space the leader-line path was already drawn in.
+                labelText.call(d3.drag()
+                    .container(qryfocus.node())
+                    .on('start', function(event) {
                         this.style.cursor = "grabbing";
-                        touched = true;
                         d3.select(this).style('font-size', '10px');
                     })
-                    .on('mouseleave mouseup', function(event) {
-                        touched = false; // signals mouse up for (D) and (E)
-                        this.style.cursor = "grab";
-                        d3.select(this).style('font-size', '8px');
+                    .on('drag', function(event) {
+                        var x1 = event.x, y1 = event.y;
 
-                        var finalX = parseFloat($(this).attr('x')),
-                            finalY = parseFloat($(this).attr('y'));
-                        var tr = d3.select(this).attr("transform");
-                        var rotation = parseFloat(tr.replace('rotate(', '').split(',')[0]) || 0;
-                        PlasmidMapperEdits.setLabelPosition(qryId, 'orf-' + d.id, finalX, finalY, rotation);
-                    })
-                    .on("mousemove", function(event) {
-                        event.preventDefault();
-                        if (!touched) return; // mousemove with the mouse up
-
-                        var t = d3.pointer(event),
-                            x1 = t[0],
-                            y1 = t[1];
-
-                        var line = qryfocus.select('#line-' + d.id);
+                        var line = qryfocus.select('#line-' + idSuffix);
                         var sp = line.attr("d").split(" ");
                         var x, y, x0 = sp[1],
                             y0 = sp[2];
-                        var txt = $(this).text();
+                        var bias = 0;
                         x = x1, y = y1;
-                        var bias = 0; // txt.length < 20 ? 0 : Math.max(5, 2 * txt.length);
                         if (x0 > x1) {
                             x = x + bias;
                         }
@@ -733,26 +789,18 @@ $(document).ready(function() {
                         pp = tr.replace('rotate(', '').replace(');', '').split(',')
                         $(this).attr('transform', 'rotate(' + pp[0] +
                             ',' + (x1 - 5) + ',' + (y1 + 2) + ')');
+                    })
+                    .on('end', function(event) {
+                        this.style.cursor = "grab";
+                        d3.select(this).style('font-size', '8px');
 
-                    }).on('mousewheel', function(event) {
-
-                        event.preventDefault();
-                        var sig = event.wheelDelta > 0 ? 1 : -1;
-                        var x1 = parseInt($(this).attr('x')),
-                            y1 = parseInt($(this).attr('y'));
-
-                        var line = qryfocus.select('#line-' + d.id);
-                        var sp = line.attr("d").split(" ");
-
+                        var finalX = parseFloat($(this).attr('x')),
+                            finalY = parseFloat($(this).attr('y'));
                         var tr = d3.select(this).attr("transform");
-                        pp = tr.replace('rotate(', '').replace(');', '').split(',')
-                        var newRotation = parseInt(pp[0]) + sig * 5;
-                        $(this).attr('transform', 'rotate(' + newRotation +
-                            ',' + x1 + ',' + y1 + ')');
-                        PlasmidMapperEdits.setLabelPosition(qryId, 'orf-' + d.id, x1, y1, newRotation);
-                    });
-
-            }
+                        var rotation = parseFloat(tr.replace('rotate(', '').split(',')[0]) || 0;
+                        PlasmidMapperEdits.setLabelPosition(qryId, 'orf-' + d.id, finalX, finalY, rotation);
+                    }));
+            });
 
         });
 
