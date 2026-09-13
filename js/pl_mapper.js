@@ -341,17 +341,6 @@ $(document).ready(function() {
             "Other": { 'kl': "other", 'coef': 1.5 },
 
         }
-        var lengendAngle = {
-            "p004KP_6": 65 * deg,
-            "p165E_3": 115 * deg,
-            "s082Km_2": -80 * deg,
-            "s164ECL_2": 140 * deg,
-            "s257ECL_2": -125 * deg,
-            "s304ECL_3": 40 * deg,
-            "m481ECL_2": 140 * deg,
-            "s202ECL_2": 140 * deg,
-        }
-
         // Total angular width this legend's arc actually needs, computed
         // from the real (fixed) category list rather than assumed --
         // sum of every coef times step, matching how the loop below lays
@@ -368,16 +357,13 @@ $(document).ready(function() {
         var step = legendStepDeg * deg;
         var radius = controls.radius;
 
-        // Default (for a plasmid ID not in the hand-curated lengendAngle
-        // map above): avoid both any user-added zoom band (data.annotations)
-        // and plotBlastLegend's own placement, computed dynamically via
-        // findClearAngle rather than a fixed guess -- a fixed default used
-        // to just avoid the OTHER legend's fixed default, which didn't
-        // account for annotation bands at all (confirmed: selecting a band
-        // under a legend's fixed position made both unreadable together).
+        // Avoid both any user-added zoom band (data.annotations) and
+        // plotBlastLegend's own placement, computed dynamically via
+        // findClearAngle for any plasmid ID -- a fixed per-ID guess isn't
+        // meaningful for a generic tool with no fixed set of plasmid IDs.
         var coord2Angle = d3.scaleLinear().range([0, pi2]).domain([0, data.qlen]);
         var occupiedRanges = annotationOccupiedRanges(data, coord2Angle);
-        var autoAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth);
+        var autoAngle = findClearAngle(occupiedRanges, requiredArcWidth);
 
         // Draws (or redraws, clearing first) all of this legend's content
         // AT A GIVEN ANGLE -- factored out so a drag can call this
@@ -493,16 +479,6 @@ $(document).ready(function() {
         var deg = Math.PI / 180,
             pi2 = 2 * Math.PI;
 
-        var lengendAngle = {
-            "p004KP_6": -120 * deg,
-            "p165E_3": -70 * deg,
-            "s082Km_2": 95 * deg,
-            "s164ECL_2": -45 * deg,
-            "s257ECL_2": -45 * deg,
-            "m481ECL_2": 220 * deg,
-            "s202ECL_2": -45 * deg,
-            "s304ECL_3": 210 * deg,
-        }
         // Widened slightly from 4.5deg/unit, alongside plotLegend's
         // ORF-category arc -- but NOT by the same ~2.2x factor: this
         // legend's total width already scales with the number of BLAST-
@@ -521,14 +497,13 @@ $(document).ready(function() {
         // from the real selection count rather than assumed fixed.
         var requiredArcWidth = Math.ceil(selected_alignments.length / 2) * coefLocal * stepLocal;
 
-        // Default: avoid any user-added zoom band AND plotLegend's already-
-        // chosen window (stashed on controls.orfLegendOccupied when it ran),
-        // computed dynamically via findClearAngle rather than a fixed guess
-        // that only ever avoided the other legend's own fixed default.
+        // Avoid any user-added zoom band AND plotLegend's already-chosen
+        // window (stashed on controls.orfLegendOccupied when it ran),
+        // computed dynamically via findClearAngle for any plasmid ID.
         var coord2Angle = d3.scaleLinear().range([0, pi2]).domain([0, data.qlen]);
         var occupiedRanges = annotationOccupiedRanges(data, coord2Angle);
         if (controls.orfLegendOccupied) occupiedRanges.push(controls.orfLegendOccupied);
-        var autoAngle = lengendAngle[qryId] ? lengendAngle[qryId] : findClearAngle(occupiedRanges, requiredArcWidth);
+        var autoAngle = findClearAngle(occupiedRanges, requiredArcWidth);
 
         // See the matching comment in plotLegend()'s drawAt(): factored out
         // so a drag can rebuild geometry (including the text-orientation
@@ -1406,7 +1381,14 @@ $(document).ready(function() {
         rerenderCurrentPlasmid();
     });
 
+    // Auto-select the first real plasmid only if Contig_ref actually has
+    // one -- a generic template/fresh --out-dir may have no data loaded
+    // yet, in which case #qryselect has just the "Choose..." placeholder
+    // (index 0) and there's nothing to render. Without this guard,
+    // "Choose..." itself got auto-selected and update_page() crashed
+    // trying to read Contig_ref["Choose..."].qlen.
     var qrySelectEl = document.getElementById('qryselect');
-    var defaultQryId = qrySelectEl.options.length > 1 ? qrySelectEl.options[1].value : qrySelectEl.options[0].value;
-    $('#qryselect').val(defaultQryId).change();
+    if (qrySelectEl.options.length > 1) {
+        $('#qryselect').val(qrySelectEl.options[1].value).change();
+    }
 });
