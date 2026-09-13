@@ -560,3 +560,44 @@ function attachOrfTooltip(selection, d) {
         if (tooltip) tooltip.style.display = 'none';
     });
 }
+
+// Exports the current figure in the requested format. Replaces the old
+// #genBtn handler, which claimed "Save png" but actually called
+// canvas.toDataURL("image/tiff") -- not a real canvas MIME type, so it
+// silently produced PNG bytes saved with a .tiff extension.
+//
+// SVG is the recommended/best-quality option: the already-serialized SVG
+// string is saved directly, no rasterization involved. PNG/JPEG go
+// through the existing canvas-based rasterization path. PDF is
+// deliberately not offered (would need a new external dependency this
+// project doesn't otherwise have); the SVG export can be opened in any
+// vector editor or the browser's own print-to-PDF when a PDF is needed.
+function exportFigure(qryId, format) {
+    var svgString = new XMLSerializer().serializeToString(document.querySelector('svg'));
+
+    if (format === 'svg') {
+        var blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        saveAs(blob, qryId + '.svg');
+        return;
+    }
+
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var DOMURL = self.URL || self.webkitURL || self;
+    var img = new Image();
+    var svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    var url = DOMURL.createObjectURL(svgBlob);
+    img.onload = function() {
+        ctx.drawImage(img, 0, 0);
+        if (format === 'jpeg') {
+            var jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            saveAs(jpegDataUrl, qryId + '.jpg');
+        } else {
+            var pngDataUrl = canvas.toDataURL('image/png');
+            saveAs(pngDataUrl, qryId + '.png');
+        }
+        DOMURL.revokeObjectURL(url);
+    };
+    img.src = url;
+}

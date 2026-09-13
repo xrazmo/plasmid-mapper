@@ -45,12 +45,29 @@
                             <span class="input-group-text">Height</span>
                         </div>
                         <input type="text" class="form-control inpt" placeholder="Height" id="height-inpt" aria-label="Height" value="5000">
-                        <button id='genBtn' type="button" class="btn btn-secondary ml-2">Save png</button>
+                        <select class="custom-select ml-2" id="export-format-select" style="max-width:110px">
+                            <option value="svg" selected>SVG</option>
+                            <option value="png">PNG</option>
+                            <option value="jpeg">JPEG</option>
+                        </select>
+                        <button id='genBtn' type="button" class="btn btn-secondary ml-2">Export</button>
                     </div>
 
 
                 </div>
 
+            </div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <div class="form-inline">
+                        <label class="mr-1" for="radius-inpt">Diameter</label>
+                        <input type="number" class="form-control form-control-sm mr-3 setting-inpt" id="radius-inpt" style="width:80px" value="260" min="50" max="1000" step="10">
+                        <label class="mr-1" for="ring-thickness-inpt">Ring thickness</label>
+                        <input type="number" class="form-control form-control-sm mr-3 setting-inpt" id="ring-thickness-inpt" style="width:70px" value="4" min="1" max="50" step="1">
+                        <label class="mr-1" for="ring-spacing-inpt">Ring spacing</label>
+                        <input type="number" class="form-control form-control-sm mr-3 setting-inpt" id="ring-spacing-inpt" style="width:70px" value="-5" min="-50" max="-1" step="1">
+                    </div>
+                </div>
             </div>
             <div class="row mt-2">
                 <div class="col-12">

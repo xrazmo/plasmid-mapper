@@ -3,6 +3,18 @@ $(document).ready(function() {
 
     var controls, touched, ringNr, qryId, selected_alignments = [];
     const half_pi = Math.PI / 2.0;
+    // User-adjustable rendering settings (diameter, per-ring thickness,
+    // ring spacing), persisted across re-renders unlike the old
+    // radius/radiusStep locals recreated fresh on every update_page() call.
+    // Read by update_page()/plotBlastRings() instead of the previous
+    // hardcoded literals; the Settings UI controls write into this object
+    // and trigger rerenderCurrentPlasmid().
+    var renderSettings = {
+        radius: 260,
+        radiusStep: -5,
+        ringThickness: 4
+    };
+    window.PlasmidMapperSettings = renderSettings;
     initForm()
 
     function initForm() {
@@ -15,8 +27,8 @@ $(document).ready(function() {
 
     function update_page(qryId) {
         var size = 800;
-        var radius = 260,
-            radiusStep = -5;
+        var radius = renderSettings.radius,
+            radiusStep = renderSettings.radiusStep;
 
         controls = { 'radius': radius, 'radiusStep': radiusStep, "size": size };
         var svg = d3.select('#main-svg');
@@ -431,8 +443,8 @@ $(document).ready(function() {
         var qLen = data.qlen;
         var bl_focus = d3.select('#bl-focus');
         var coord2Angle = d3.scaleLinear().range([0, 2 * Math.PI]).domain([0, qLen])
-        var arcW = 4,
-            panelW = 4,
+        var arcW = renderSettings.ringThickness,
+            panelW = renderSettings.ringThickness,
             p_inR = radius,
             p_outR = radius + panelW,
             innerR = p_inR + 2,
@@ -985,22 +997,8 @@ $(document).ready(function() {
 
 
     $('#genBtn').on('click', function(event) {
-        // saveSVG("main-svg", "saveLink");
-        clear_canvas();
-        var svgString = new XMLSerializer().serializeToString(document.querySelector('svg'));
-        var canvas = document.getElementById("canvas");
-        var ctx = canvas.getContext("2d");
-        var DOMURL = self.URL || self.webkitURL || self;
-        var img = new Image();
-        var svg = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-        var url = DOMURL.createObjectURL(svg);
-        img.onload = function() {
-            ctx.drawImage(img, 0, 0);
-            var png = canvas.toDataURL("image/tiff");
-            saveAs(png, qryId + ".tiff");
-            DOMURL.revokeObjectURL(png);
-        };
-        img.src = url;
+        var format = $('#export-format-select').val();
+        exportFigure(qryId, format);
     });
 
 
@@ -1034,6 +1032,30 @@ $(document).ready(function() {
             rerenderCurrentPlasmid();
         });
         event.target.value = '';
+    });
+
+    $('#radius-inpt').on('change', function() {
+        var val = parseFloat($(this).val());
+        if (!isNaN(val) && val > 0) {
+            renderSettings.radius = val;
+            rerenderCurrentPlasmid();
+        }
+    });
+
+    $('#ring-thickness-inpt').on('change', function() {
+        var val = parseFloat($(this).val());
+        if (!isNaN(val) && val > 0) {
+            renderSettings.ringThickness = val;
+            rerenderCurrentPlasmid();
+        }
+    });
+
+    $('#ring-spacing-inpt').on('change', function() {
+        var val = parseFloat($(this).val());
+        if (!isNaN(val) && val < 0) {
+            renderSettings.radiusStep = val;
+            rerenderCurrentPlasmid();
+        }
     });
 
     var qrySelectEl = document.getElementById('qryselect');
