@@ -21,7 +21,20 @@ _CARD_ARO_GENE_RE = re.compile(r"ARO:\d+\|([^\[|]+?)\s*(?:\[|$)")
 # at a fixed length instead -- a plain safety net so the ORF popover/label
 # text stays readable rather than showing a full raw BLAST subject title.
 _ISFINDER_DESCRIPTION_MAX_LEN = 40
-_UNIPROT_DESCRIPTION_MAX_LEN = 60
+_UNIPROT_DESCRIPTION_MAX_LEN = 40
+
+# UniProt/SwissProt's stitle is a full BLAST-style FASTA header, e.g.
+# "sp|P62590|INT2_ECOLX Integrase/recombinase OS=Escherichia coli OX=562
+# GN=intA PE=3 SV=1" -- the "sp|ACCESSION|NAME_ORG " prefix and the
+# trailing "OS=.../OX=.../GN=.../PE=.../SV=..." annotation fields aren't
+# the actual product description, but they used to eat most of the
+# character budget before truncation, leaving almost nothing of the real
+# text (e.g. "sp|P62590|INT2_ECOLX Integrase/recombinase OS=Escherichia
+# c…" showed barely more than the accession/organism). Stripping both
+# ends first means the truncation budget is spent on the description
+# itself.
+_UNIPROT_PREFIX_RE = re.compile(r"^\w{2}\|[^|]+\|\S+\s+")
+_UNIPROT_SUFFIX_RE = re.compile(r"\s+OS=.*$")
 
 
 @dataclass
@@ -70,7 +83,9 @@ def _isfinder_short_description(description: str) -> str:
 
 
 def _uniprot_short_description(description: str) -> str:
-    return _truncate(description, _UNIPROT_DESCRIPTION_MAX_LEN)
+    stripped = _UNIPROT_PREFIX_RE.sub("", description)
+    stripped = _UNIPROT_SUFFIX_RE.sub("", stripped)
+    return _truncate(stripped, _UNIPROT_DESCRIPTION_MAX_LEN)
 
 
 def classify_orf(card_hit=None, isfinder_hit=None, vfdb_hit=None, bacmet_hit=None, uniprot_hit=None):

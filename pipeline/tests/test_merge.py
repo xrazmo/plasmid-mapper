@@ -196,12 +196,28 @@ def test_isfinder_dscr_unchanged_when_short():
 def test_uniprot_dscr_truncated_when_long():
     long_hit = DbHit(
         "UniProt/SwissProt", "P99999",
-        "Multidrug resistance efflux pump outer membrane protein OprM precursor OS=Pseudomonas aeruginosa",
+        "sp|P99999|OPRM_PSEAE Multidrug resistance efflux pump outer membrane protein OprM precursor OS=Pseudomonas aeruginosa OX=287 GN=oprM PE=1 SV=1",
         80.0, 90.0,
     )
     result = classify_orf(uniprot_hit=long_hit)
-    assert len(result.dscr) <= 60
+    assert len(result.dscr) <= 40
     assert result.dscr.endswith("…")
+
+
+def test_uniprot_dscr_strips_accession_prefix_and_os_suffix():
+    # The real motivating case: the raw stitle's "sp|ACCESSION|NAME_ORG "
+    # prefix and trailing "OS=.../OX=.../GN=.../PE=.../SV=..." annotation
+    # fields used to eat most of the truncation budget, leaving almost
+    # nothing of the actual description visible in the popover (e.g.
+    # "sp|P62590|INT2_ECOLX Integrase/recombinase OS=Escherichia c…").
+    # Both must be stripped before truncating.
+    hit = DbHit(
+        "UniProt/SwissProt", "P62590",
+        "sp|P62590|INT2_ECOLX Integrase/recombinase OS=Escherichia coli OX=562 GN=intA PE=3 SV=1",
+        99.6, 100.0,
+    )
+    result = classify_orf(uniprot_hit=hit)
+    assert result.dscr == "Integrase/recombinase"
 
 
 def test_uniprot_dscr_unchanged_when_short():
@@ -211,7 +227,7 @@ def test_uniprot_dscr_unchanged_when_short():
 
 def test_uniprot_keyword_classification_uses_full_untruncated_description():
     # classify_by_keyword() must see the full description (e.g. to find
-    # "integrase" past the 60-char truncation point), even though the
+    # "integrase" past the 40-char truncation point), even though the
     # returned dscr field itself is shortened.
     long_virulence_hit = DbHit(
         "UniProt/SwissProt", "P11111",

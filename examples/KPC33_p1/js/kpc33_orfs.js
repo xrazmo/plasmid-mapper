@@ -17,7 +17,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P18351|YPC1_ECOLX Uncharacterized 27.6 kDa protein OS=Es\u2026",
+        "dscr": "Uncharacterized 27.6 kDa protein",
         "linkout": null
       },
       {
@@ -137,7 +137,7 @@ var Contig_ref = {
         "cov": 99.47089947089947,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P18957|UVP1_ECOLX Protein uvp1 OS=Escherichia coli OX=56\u2026",
+        "dscr": "Protein uvp1",
         "linkout": null
       },
       {
@@ -152,7 +152,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P14633|T2E2_ECOLX Type II restriction enzyme EcoRII OS=E\u2026",
+        "dscr": "Type II restriction enzyme EcoRII",
         "linkout": null
       },
       {
@@ -167,7 +167,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P05101|MTE2_ECOLX Type II methyltransferase M.EcoRII OS=\u2026",
+        "dscr": "Type II methyltransferase M.EcoRII",
         "linkout": null
       },
       {
@@ -377,7 +377,7 @@ var Contig_ref = {
         "cov": 96.30484988452656,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|O50330|TRWK_ECOLX Type IV secretion system ATPase TrwK O\u2026",
+        "dscr": "Type IV secretion system ATPase TrwK",
         "linkout": null
       },
       {
@@ -437,7 +437,7 @@ var Contig_ref = {
         "cov": 94.82758620689656,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|O50335|TRWG_ECOLX Type IV secretion system protein TrwG\u2026",
+        "dscr": "Type IV secretion system protein TrwG",
         "linkout": null
       },
       {
@@ -467,7 +467,7 @@ var Contig_ref = {
         "cov": 53.10880829015544,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|O50337|TRWE_ECOLX Type IV secretion system protein TrwE\u2026",
+        "dscr": "Type IV secretion system protein TrwE",
         "linkout": null
       },
       {
@@ -482,7 +482,7 @@ var Contig_ref = {
         "cov": 94.25981873111782,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|O50338|TRWD_ECOLX Type IV secretion system ATPase TrwD O\u2026",
+        "dscr": "Type IV secretion system ATPase TrwD",
         "linkout": null
       },
       {
@@ -647,7 +647,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P62590|INT2_ECOLX Integrase/recombinase OS=Escherichia c\u2026",
+        "dscr": "Integrase/recombinase",
         "linkout": null
       },
       {
@@ -797,7 +797,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P62590|INT2_ECOLX Integrase/recombinase OS=Escherichia c\u2026",
+        "dscr": "Integrase/recombinase",
         "linkout": null
       },
       {
@@ -962,7 +962,7 @@ var Contig_ref = {
         "cov": 85.85461689587426,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|Q04230|TRWB_ECOLX Type IV secretion system-coupling prot\u2026",
+        "dscr": "Type IV secretion system-coupling prote\u2026",
         "linkout": null
       },
       {
@@ -1247,7 +1247,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "sp|P14303|MUCB_SALTM Protein MucB OS=Salmonella typhimurium\u2026",
+        "dscr": "Protein MucB",
         "linkout": null
       },
       {
