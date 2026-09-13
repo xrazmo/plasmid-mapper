@@ -527,7 +527,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3005365|ID:4098|Name:KPC-33|NCBI:CP025144.1",
+        "dscr": "KPC-33",
         "linkout": null
       },
       {
@@ -542,7 +542,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3009074|ID:8492|Name:TEM-255|NCBI:PQ284151.1",
+        "dscr": "TEM-255",
         "linkout": null
       },
       {
@@ -617,7 +617,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3004623|ID:3322|Name:AAC(3)-IId|NCBI:EU022314.1",
+        "dscr": "AAC(3)-IId",
         "linkout": null
       },
       {
@@ -662,7 +662,7 @@ var Contig_ref = {
         "cov": 99.49748743718592,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3002581|ID:1370|Name:AAC(6')-Ib10|NCBI:U59183.1",
+        "dscr": "AAC(6')-Ib10",
         "linkout": null
       },
       {
@@ -677,7 +677,7 @@ var Contig_ref = {
         "cov": 85.91065292096219,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3001396|ID:1952|Name:OXA-1|NCBI:JN420336.1",
+        "dscr": "OXA-1",
         "linkout": null
       },
       {
@@ -692,7 +692,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3002676|ID:150|Name:catB3|NCBI:JX101693.1",
+        "dscr": "catB3",
         "linkout": null
       },
       {
@@ -707,7 +707,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3002848|ID:743|Name:arr-3|NCBI:EU675686.1",
+        "dscr": "arr-3",
         "linkout": null
       },
       {
@@ -722,7 +722,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3000410|ID:1070|Name:sul1|NCBI:JF969163.1",
+        "dscr": "sul1",
         "linkout": null
       },
       {
@@ -767,7 +767,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3003015|ID:875|Name:dfrA19|NCBI:AJ310778.1",
+        "dscr": "dfrA19",
         "linkout": null
       },
       {
@@ -812,7 +812,7 @@ var Contig_ref = {
         "cov": 86.40776699029126,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3002639|ID:1830|Name:APH(3'')-Ib|NCBI:AF313472.2",
+        "dscr": "APH(3'')-Ib",
         "linkout": null
       },
       {
@@ -827,7 +827,7 @@ var Contig_ref = {
         "cov": 100.0,
         "gap": 0,
         "mismatch": 0,
-        "dscr": "ARO:3002660|ID:1031|Name:APH(6)-Id|NCBI:AF024602.1",
+        "dscr": "APH(6)-Id",
         "linkout": null
       },
       {
